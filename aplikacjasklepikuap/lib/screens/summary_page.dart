@@ -13,7 +13,10 @@ class SummaryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Ogólne podsumowanie sprzedaży"),
+        title: Text(
+          "Ogólne Podsumowanie Sprzedaży",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.picture_as_pdf),
@@ -29,29 +32,21 @@ class SummaryPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+            _sectionHeader("Podsumowanie"),
+            _summaryRow("Całkowita suma sprzedaży", "${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł"),
             Divider(),
-            Text(
-              "Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
-              style: TextStyle(fontSize: 18, color: Colors.red),
+            _summaryRow(
+              "Łączna wartość rabatów",
+              "${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
+              color: Colors.red,
             ),
+            SizedBox(height: 20),
+            _sectionHeader("Szczegóły Transakcji"),
+            _summaryRow("Transakcje gotówką", "${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)"),
+            _summaryRow("Transakcje kartą", "${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)"),
+            Divider(),
+            _sectionHeader("Sprzedane Gadżety"),
             SizedBox(height: 10),
-            Text(
-              "Transakcje gotówką: ${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)",
-              style: TextStyle(fontSize: 16),
-            ),
-            Text(
-              "Transakcje kartą: ${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)",
-              style: TextStyle(fontSize: 16),
-            ),
-            Divider(),
-            Text(
-              "Sprzedane gadżety:",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
             ...GlobalState.iloscGadzetow.entries.map((entry) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Text(
@@ -61,6 +56,32 @@ class SummaryPage extends StatelessWidget {
             )),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+    );
+  }
+
+  Widget _summaryRow(String label, String value, {Color color = Colors.black}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
@@ -77,7 +98,7 @@ class SummaryPage extends StatelessWidget {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text("Ogólne podsumowanie sprzedaży", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, font: ttf)),
+              pw.Text("Ogólne Podsumowanie Sprzedaży", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, font: ttf)),
               pw.SizedBox(height: 10),
               pw.Text("Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł", style: pw.TextStyle(fontSize: 18, font: ttf)),
               pw.Divider(),
@@ -86,7 +107,7 @@ class SummaryPage extends StatelessWidget {
               pw.Text("Transakcje gotówką: ${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)", style: pw.TextStyle(font: ttf)),
               pw.Text("Transakcje kartą: ${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)", style: pw.TextStyle(font: ttf)),
               pw.Divider(),
-              pw.Text("Sprzedane gadżety:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: ttf)),
+              pw.Text("Sprzedane Gadżety:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: ttf)),
               ...GlobalState.iloscGadzetow.entries.map((entry) => pw.Text("${entry.key}: ${entry.value} szt.", style: pw.TextStyle(fontSize: 16, font: ttf))),
             ],
           );

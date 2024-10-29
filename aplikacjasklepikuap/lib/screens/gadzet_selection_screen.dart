@@ -37,112 +37,123 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Oblicz liczbę kolumn w zależności od szerokości ekranu
-    double screenWidth = MediaQuery.of(context).size.width;
-    int crossAxisCount = screenWidth > 600 ? 4 : (screenWidth > 400 ? 3 : 2); // Dynamiczna liczba kolumn
+Widget build(BuildContext context) {
+  // Ustal liczbę kolumn na 4
+  int crossAxisCount = 4;
 
-    return Scaffold(
-      appBar: AppBar(title: Text("Wybierz gadżety")),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8.0,
-            mainAxisSpacing: 8.0,
-            childAspectRatio: 0.7,
-          ),
-          itemCount: gadzety.length,
-          itemBuilder: (context, index) {
-            Gadzet gadzet = gadzety[index];
-            return Stack(
-              children: [
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
+  return Scaffold(
+    appBar: AppBar(
+      title: Text("Wybierz gadżety"),
+      backgroundColor: Colors.deepPurple,
+    ),
+    body: Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 10.0,
+          mainAxisSpacing: 10.0,
+          childAspectRatio: 0.8, // Ustawienie proporcji dla kafelków
+        ),
+        itemCount: gadzety.length,
+        itemBuilder: (context, index) {
+          Gadzet gadzet = gadzety[index];
+          return Stack(
+            children: [
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                color: Colors.deepPurple[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
                           child: Image.asset(
                             gadzet.obrazek,
                             fit: BoxFit.cover,
                           ),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          gadzet.nazwa,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        gadzet.nazwa,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple[800],
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
-                          style: TextStyle(fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Dodano: ${licznikGadzetow[gadzet.nazwa] ?? 0} szt.",
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
+                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Dodano: ${licznikGadzetow[gadzet.nazwa] ?? 0} szt.",
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.discount, color: Colors.green[700]),
+                            onPressed: () => toggleRabatu(gadzet),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.add_circle, color: Colors.deepPurple),
+                            onPressed: () => dodajDoKoszyka(gadzet),
+                          ),
+                          if ((licznikGadzetow[gadzet.nazwa] ?? 0) > 0)
                             IconButton(
-                              icon: Icon(Icons.discount, color: Colors.green),
-                              onPressed: () => toggleRabatu(gadzet),
+                              icon: Icon(Icons.remove_circle, color: Colors.redAccent),
+                              onPressed: () => usunZKoszyka(gadzet),
                             ),
-                            IconButton(
-                              icon: Icon(Icons.add, color: Colors.blue),
-                              onPressed: () => dodajDoKoszyka(gadzet),
-                            ),
-                            if ((licznikGadzetow[gadzet.nazwa] ?? 0) > 0)
-                              IconButton(
-                                icon: Icon(Icons.remove, color: Colors.red),
-                                onPressed: () => usunZKoszyka(gadzet),
-                              ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (gadzet.licznikZnizki > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "Rabat!",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
-                // Wskaźnik rabatu
-                if (gadzet.licznikZnizki > 0)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        "Rabat!",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
-      floatingActionButton: FloatingActionButton(
+    ),
+    floatingActionButton: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: ElevatedButton(
         onPressed: () {
           Navigator.push(
             context,
@@ -151,8 +162,33 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
             ),
           );
         },
-        child: Icon(Icons.arrow_forward),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.deepPurple,
+          padding: EdgeInsets.symmetric(vertical: 14, horizontal: 30),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Icon(Icons.arrow_forward, color: Colors.white), // Kolor ikony
+    SizedBox(width: 8),
+    Text(
+      "Dalej",
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.white, // Zmienna ustawiająca kolor tekstu
       ),
-    );
-  }
+    ),
+  ],
+)
+
+      ),
+    ),
+    floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+  );
+}
+
 }

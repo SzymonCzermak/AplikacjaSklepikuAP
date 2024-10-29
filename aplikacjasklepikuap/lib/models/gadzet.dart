@@ -36,4 +36,3 @@ List<Gadzet> gadzety = [
   Gadzet(nazwa: "Smycz", cena: 8.0, obrazek: "assets/gadzety/Smycz.png"),
   Gadzet(nazwa: "Zdjęcie", cena: 17.0, obrazek: "assets/gadzety/Zdjęcie.png"),
 ];
-

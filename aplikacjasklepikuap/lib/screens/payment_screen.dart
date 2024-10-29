@@ -18,21 +18,24 @@ class PaymentScreen extends StatelessWidget {
       koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
     });
 
-    // Wylicza łączną cenę uwzględniając zniżki i nalicza sumę rabatów
     koszykZliczanie.forEach((nazwa, ilosc) {
       Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == nazwa);
-      suma += gadzet.getCenaZRabatem(ilosc);
-
+      
+      // Naliczamy rabat tylko na pierwszy egzemplarz gadżetu
       if (gadzet.licznikZnizki > 0) {
         double cenaPoRabacie = (gadzet.cena * 0.9).floorToDouble();
-        double rabatNaSztuke = gadzet.cena - cenaPoRabacie;
-        sumaRabaty += rabatNaSztuke;
+        suma += cenaPoRabacie + (ilosc - 1) * gadzet.cena; // Rabat na jeden egzemplarz, pełna cena dla pozostałych
+        sumaRabaty += gadzet.cena - cenaPoRabacie; // Dodajemy rabat tylko dla jednego egzemplarza
+      } else {
+        // Brak rabatu
+        suma += gadzet.cena * ilosc;
       }
     });
 
     // Zaktualizuj wartości globalne
     GlobalState.sumaSprzedazy += suma;
     GlobalState.sumaRabaty += sumaRabaty;
+    
     if (metodaPlatnosci == "Gotówka") {
       GlobalState.liczbaTransakcjiGotowka++;
       GlobalState.sumaGotowka += suma;
@@ -45,6 +48,7 @@ class PaymentScreen extends StatelessWidget {
       GlobalState.iloscGadzetow[gadzet.nazwa] = (GlobalState.iloscGadzetow[gadzet.nazwa] ?? 0) + 1;
     });
 
+    // Resetowanie rabatów po transakcji, aby można było je naliczyć w przyszłych transakcjach
     koszyk.forEach((gadzet) {
       gadzet.licznikZnizki = 0;
     });
@@ -57,6 +61,14 @@ class PaymentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Obliczamy sumaRabaty na tej stronie, aby było dostępne do wyświetlenia
+    double sumaRabaty = koszyk.fold(0.0, (sum, gadzet) {
+      if (gadzet.licznikZnizki > 0) {
+        return sum + (gadzet.cena * 0.1).floorToDouble();
+      }
+      return sum;
+    });
+
     return Scaffold(
       appBar: AppBar(title: Text("Wybierz sposób płatności")),
       body: Padding(
@@ -83,18 +95,11 @@ class PaymentScreen extends StatelessWidget {
                             : 0.0;
                         return ListTile(
                           title: Text(gadzet.nazwa),
-                          subtitle: Text("Cena: ${gadzet.cena.toStringAsFixed(2)} zł" +
-                              (rabat > 0 ? " (Rabat: -${rabat.toStringAsFixed(2)} zł)" : "")),
-                          trailing: Text("Ilość: ${koszyk.where((g) => g.nazwa == gadzet.nazwa).length}"),
                         );
                       },
                     ),
                   ),
                   Divider(),
-                  Text(
-                    "Łączna kwota: ${koszyk.fold(0.0, (double sum, gadzet) => sum + gadzet.cena).toStringAsFixed(2)} zł",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
                 ],
               ),
             ),
@@ -132,5 +137,3 @@ class PaymentScreen extends StatelessWidget {
     );
   }
 }
-
-

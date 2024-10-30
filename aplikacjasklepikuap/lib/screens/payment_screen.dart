@@ -10,7 +10,7 @@ class PaymentScreen extends StatelessWidget {
 
   void finalizeTransaction(String metodaPlatnosci, BuildContext context) {
     double suma = 0;
-    double sumaRabaty = 0;
+    double sumaRabatyTransakcji = 0; // Suma rabatów dla tej konkretnej transakcji
     Map<String, int> koszykZliczanie = {};
 
     // Zlicza liczbę egzemplarzy każdego gadżetu w koszyku
@@ -20,22 +20,23 @@ class PaymentScreen extends StatelessWidget {
 
     koszykZliczanie.forEach((nazwa, ilosc) {
       Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == nazwa);
-      
-      // Naliczamy rabat tylko na pierwszy egzemplarz gadżetu
-      if (gadzet.licznikZnizki > 0) {
+
+      // Rabat tylko na jeden egzemplarz, reszta w pełnej cenie
+      if (gadzet.licznikZnizki > 0 && ilosc > 0) {
         double cenaPoRabacie = (gadzet.cena * 0.9).floorToDouble();
-        suma += cenaPoRabacie + (ilosc - 1) * gadzet.cena; // Rabat na jeden egzemplarz, pełna cena dla pozostałych
-        sumaRabaty += gadzet.cena - cenaPoRabacie; // Dodajemy rabat tylko dla jednego egzemplarza
+        suma += cenaPoRabacie + (ilosc - 1) * gadzet.cena;
+        sumaRabatyTransakcji += gadzet.cena - cenaPoRabacie;
       } else {
-        // Brak rabatu
         suma += gadzet.cena * ilosc;
       }
     });
 
-    // Zaktualizuj wartości globalne
+    // Dodajemy sumę rabatów tej transakcji do globalnej sumy rabatów
+    GlobalState.sumaRabaty += sumaRabatyTransakcji;
+
+    // Aktualizuj wartości globalne
     GlobalState.sumaSprzedazy += suma;
-    GlobalState.sumaRabaty += sumaRabaty;
-    
+
     if (metodaPlatnosci == "Gotówka") {
       GlobalState.liczbaTransakcjiGotowka++;
       GlobalState.sumaGotowka += suma;
@@ -61,75 +62,87 @@ class PaymentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Obliczamy sumaRabaty na tej stronie, aby było dostępne do wyświetlenia
-    double sumaRabaty = koszyk.fold(0.0, (sum, gadzet) {
-      if (gadzet.licznikZnizki > 0) {
-        return sum + (gadzet.cena * 0.1).floorToDouble();
-      }
-      return sum;
+    // Zlicza liczbę każdego gadżetu w koszyku
+    Map<String, int> koszykZliczanie = {};
+    koszyk.forEach((gadzet) {
+      koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
+    });
+
+    double lacznaKwotaPoRabacie = koszykZliczanie.entries.fold(0.0, (sum, entry) {
+      Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == entry.key);
+      int ilosc = entry.value;
+
+      // Rabat na jeden egzemplarz, pełna cena dla pozostałych
+      double cenaPoRabacie = gadzet.licznikZnizki > 0
+          ? (gadzet.cena * 0.9).floorToDouble() + (ilosc - 1) * gadzet.cena
+          : gadzet.cena * ilosc;
+
+      return sum + cenaPoRabacie;
     });
 
     return Scaffold(
       appBar: AppBar(title: Text("Wybierz sposób płatności")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Sekcja podsumowania koszyka
+            Text(
+              "Podsumowanie Koszyka",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            Divider(),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Podsumowanie Koszyka",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  Divider(),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: koszyk.length,
-                      itemBuilder: (context, index) {
-                        final gadzet = koszyk[index];
-                        final rabat = gadzet.licznikZnizki > 0
-                            ? (gadzet.cena - (gadzet.cena * 0.9).floorToDouble())
-                            : 0.0;
-                        return ListTile(
-                          title: Text(gadzet.nazwa),
-                        );
-                      },
+              child: ListView.builder(
+                itemCount: koszykZliczanie.length,
+                itemBuilder: (context, index) {
+                  String nazwa = koszykZliczanie.keys.elementAt(index);
+                  int ilosc = koszykZliczanie[nazwa]!;
+                  Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == nazwa);
+                  double rabat = gadzet.licznikZnizki > 0 ? gadzet.cena * 0.1 : 0.0;
+
+                  return ListTile(
+                    title: Text(gadzet.nazwa),
+                    subtitle: Text(
+                      "Cena: ${gadzet.cena.toStringAsFixed(2)} zł" +
+                          (rabat > 0 ? " (Rabat: -${rabat.toStringAsFixed(2)} zł)" : ""),
                     ),
-                  ),
-                  Divider(),
-                ],
+                    trailing: Text("Ilość: $ilosc"),
+                  );
+                },
               ),
             ),
-            VerticalDivider(),
-            // Sekcja wyboru płatności
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.credit_card),
-                    onPressed: () => finalizeTransaction("Karta", context),
-                    label: Text("Płatność kartą"),
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30), backgroundColor: Colors.blueAccent,
-                      textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+            Divider(),
+            Text(
+              "Łączna kwota po rabacie: ${lacznaKwotaPoRabacie.toStringAsFixed(2)} zł",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  icon: Icon(Icons.credit_card),
+                  onPressed: () => finalizeTransaction("Karta", context),
+                  label: Text("Płatność kartą"),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+                    backgroundColor: Colors.blueAccent,
+                    textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.money),
-                    onPressed: () => finalizeTransaction("Gotówka", context),
-                    label: Text("Płatność gotówką"),
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30), backgroundColor: Colors.green,
-                      textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.money),
+                  onPressed: () => finalizeTransaction("Gotówka", context),
+                  label: Text("Płatność gotówką"),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+                    backgroundColor: Colors.green,
+                    textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

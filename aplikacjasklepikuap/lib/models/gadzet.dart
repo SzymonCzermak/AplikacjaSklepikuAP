@@ -33,6 +33,6 @@ List<Gadzet> gadzety = [
   Gadzet(nazwa: "Magnes kopuły pionowy", cena: 10.0, obrazek: "assets/gadzety/Magnes kopuły pionowy.png"),
   Gadzet(nazwa: "Magnes kopuły poziomy", cena: 10.0, obrazek: "assets/gadzety/Magnes kopuły poziomy.png"),
   Gadzet(nazwa: "Magnes wejście", cena: 10.0, obrazek: "assets/gadzety/Magnes wejście.png"),
-  Gadzet(nazwa: "Smycz", cena: 8.0, obrazek: "assets/gadzety/Smycz.png"),
+  Gadzet(nazwa: "Smycz", cena: 6.0, obrazek: "assets/gadzety/Smycz.png"),
   Gadzet(nazwa: "Zdjęcie", cena: 17.0, obrazek: "assets/gadzety/Zdjęcie.png"),
 ];

@@ -4,17 +4,21 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:html' as html;
 import 'dart:typed_data';
+import 'package:intl/intl.dart';
 
 import '../utils/global_state.dart';
 import '../models/gadzet.dart';
 
 class SummaryPage extends StatelessWidget {
+
+String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Ogólne Podsumowanie Sprzedaży",
+          "Podsumowanie sprzedazy k12 z dnia $formattedDate.", // Dodano datę
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         actions: [

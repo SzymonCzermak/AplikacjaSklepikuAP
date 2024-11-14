@@ -3,10 +3,17 @@ import '../models/gadzet.dart';
 import '../utils/global_state.dart';
 import 'home_page.dart';
 
-class PaymentScreen extends StatelessWidget {
+class PaymentScreen extends StatefulWidget {
   final List<Gadzet> koszyk;
 
   PaymentScreen({required this.koszyk});
+
+  @override
+  _PaymentScreenState createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+  bool paragonWystawiony = false; // Zmienna do przechowywania stanu przełącznika
 
   void finalizeTransaction(String metodaPlatnosci, BuildContext context) {
     double suma = 0;
@@ -14,12 +21,12 @@ class PaymentScreen extends StatelessWidget {
     Map<String, int> koszykZliczanie = {};
 
     // Zlicza liczbę egzemplarzy każdego gadżetu w koszyku
-    koszyk.forEach((gadzet) {
+    widget.koszyk.forEach((gadzet) {
       koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
     });
 
     koszykZliczanie.forEach((nazwa, ilosc) {
-      Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == nazwa);
+      Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == nazwa);
 
       // Rabat tylko na jeden egzemplarz, reszta w pełnej cenie
       if (gadzet.licznikZnizki > 0 && ilosc > 0) {
@@ -45,12 +52,18 @@ class PaymentScreen extends StatelessWidget {
       GlobalState.sumaKarta += suma;
     }
 
-    koszyk.forEach((gadzet) {
+    // Zwiększ licznik paragonów, jeśli paragon został wystawiony
+    if (paragonWystawiony) {
+      GlobalState.liczbaTransakcjiParagon++;
+      GlobalState.sumaParagon += suma;
+    }
+
+    widget.koszyk.forEach((gadzet) {
       GlobalState.iloscGadzetow[gadzet.nazwa] = (GlobalState.iloscGadzetow[gadzet.nazwa] ?? 0) + 1;
     });
 
     // Resetowanie rabatów po transakcji, aby można było je naliczyć w przyszłych transakcjach
-    koszyk.forEach((gadzet) {
+    widget.koszyk.forEach((gadzet) {
       gadzet.licznikZnizki = 0;
     });
 
@@ -64,12 +77,12 @@ class PaymentScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Zlicza liczbę każdego gadżetu w koszyku
     Map<String, int> koszykZliczanie = {};
-    koszyk.forEach((gadzet) {
+    widget.koszyk.forEach((gadzet) {
       koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
     });
 
     double lacznaKwotaPoRabacie = koszykZliczanie.entries.fold(0.0, (sum, entry) {
-      Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == entry.key);
+      Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == entry.key);
       int ilosc = entry.value;
 
       // Rabat na jeden egzemplarz, pełna cena dla pozostałych
@@ -98,7 +111,7 @@ class PaymentScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   String nazwa = koszykZliczanie.keys.elementAt(index);
                   int ilosc = koszykZliczanie[nazwa]!;
-                  Gadzet gadzet = koszyk.firstWhere((item) => item.nazwa == nazwa);
+                  Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == nazwa);
                   double rabat = gadzet.licznikZnizki > 0 ? gadzet.cena * 0.1 : 0.0;
 
                   return ListTile(
@@ -119,6 +132,20 @@ class PaymentScreen extends StatelessWidget {
             ),
             SizedBox(height: 16),
             Row(
+              children: [
+                Text("Paragon wystawiony:"),
+                Switch(
+                  value: paragonWystawiony,
+                  onChanged: (value) {
+                    setState(() {
+                      paragonWystawiony = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(
@@ -131,7 +158,7 @@ class PaymentScreen extends StatelessWidget {
                     textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-                SizedBox(height: 20),
+                SizedBox(width: 20),
                 ElevatedButton.icon(
                   icon: Icon(Icons.money),
                   onPressed: () => finalizeTransaction("Gotówka", context),

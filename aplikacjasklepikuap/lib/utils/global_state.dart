@@ -5,5 +5,7 @@ class GlobalState {
   static int liczbaTransakcjiKarta = 0;
   static double sumaGotowka = 0; // Suma dla transakcji gotówką
   static double sumaKarta = 0; // Suma dla transakcji kartą
+  static int liczbaTransakcjiParagon = 0; // Dodane pole
+  static double sumaParagon = 0.0; // Suma dla transakcji kartą
   static Map<String, int> iloscGadzetow = {};
 }

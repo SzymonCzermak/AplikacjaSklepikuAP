@@ -1,33 +1,40 @@
-AplikacjaSklepikuAP
+# AplikacjaSklepikuAP
 
-AplikacjaSklepikuAP jest rozwiązaniem stworzonym z myślą o ułatwieniu monitorowania sprzedaży gadżetów w sklepiku Alvernia. Umożliwia ona wygodne śledzenie liczby sprzedanych produktów, wartości transakcji oraz sposobu płatności, a także generuje kompleksowe podsumowanie dnia w formie pliku PDF.
+**AplikacjaSklepikuAP** to narzędzie stworzone z myślą o zarządzaniu sprzedażą gadżetów w sklepiku Alvernia. Umożliwia rejestrowanie transakcji, obsługę różnych form płatności oraz generowanie dziennych raportów w formacie PDF.
 
-Funkcje
+## Funkcje
 
-1. Rejestracja Sprzedaży Gadżetów
-Aplikacja pozwala na rejestrowanie liczby sprzedanych gadżetów z możliwością dodawania i odejmowania każdej pozycji. Dla każdego gadżetu użytkownik widzi aktualną liczbę sprzedanych sztuk, co zapewnia pełną kontrolę nad stanem sprzedaży.
+### 1. Rejestracja Sprzedaży
+- Dodawanie i odejmowanie sprzedanych gadżetów.
+- Podgląd bieżącego stanu sprzedaży dla każdego produktu.
 
-2. Obsługa Płatności
-Aplikacja obsługuje różne formy płatności:
+### 2. Obsługa Płatności
+- Rejestracja transakcji gotówkowych i kartą osobno.
+- Podsumowanie kwot i liczby transakcji dla każdej metody płatności.
 
-Płatność gotówką oraz płatność kartą są rejestrowane osobno.
-Użytkownik ma możliwość sprawdzenia liczby transakcji i całkowitej kwoty dla każdej metody płatności, co daje jasny obraz dziennej sprzedaży.
-3. Rabaty i Korekta Transakcji
-W przypadku udzielania rabatów aplikacja pozwala na odnotowanie ich wartości przy danej transakcji. Możliwe jest również edytowanie liczby sprzedanych gadżetów na bieżąco, co ułatwia zarządzanie danymi sprzedażowymi.
+### 3. Rabaty i Korekta Transakcji
+- Dodawanie rabatów na pojedyncze sztuki w jednej transakcji.
+- Możliwość cofnięcia lub edycji liczby sprzedanych gadżetów.
 
-4. Generowanie Podsumowania Dnia
-Pod koniec dnia sprzedażowego aplikacja tworzy raport w formacie PDF, zawierający wszystkie kluczowe dane:
+### 4. Generowanie Raportów
+- Automatyczne tworzenie raportów w formacie PDF na koniec dnia.
+- Raport zawiera:
+  - Całkowitą sprzedaż.
+  - Łączną wartość rabatów.
+  - Liczbę transakcji.
+  - Szczegóły dotyczące produktów.
 
-Całkowitą kwotę sprzedaży
-Łączną wartość udzielonych rabatów
-Liczbę transakcji
-Szczegóły dotyczące sprzedanych gadżetów.
-5. Zapis Raportu
-Podsumowanie można zapisać jako plik PDF, co umożliwia przechowywanie i archiwizowanie dziennych wyników sprzedaży.
+### 5. Dynamiczna Modyfikacja
+- Bieżąca edycja danych sprzedażowych zapewniająca elastyczność i dokładność.
 
-6. Dynamiczna Modyfikacja Danych
-Aplikacja pozwala na edytowanie liczby sprzedanych gadżetów oraz kwot sprzedaży w czasie rzeczywistym. Dzięki temu użytkownik może w każdej chwili dostosować dane sprzedażowe, co zapewnia elastyczność i dokładność.
+## Technologie
 
-Technologia
+- **Flutter** – wieloplatformowe wsparcie i płynne działanie.
+- **PDF Package** – generowanie dokumentów PDF.
+- **GlobalState** – lokalne zarządzanie danymi.
 
-Aplikacja została stworzona z użyciem technologii Flutter, co zapewnia płynność działania oraz dostępność na różnych urządzeniach. Dokumenty PDF generowane są z użyciem pakietu pdf, a dane przechowywane są lokalnie w strukturach zarządzanych przez GlobalState.
+## Instalacja
+
+1. Sklonuj repozytorium:
+   ```bash
+   git clone https://github.com/TwojaNazwa/AplikacjaSklepikuAP.git

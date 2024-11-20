@@ -38,3 +38,18 @@
 1. Sklonuj repozytorium:
    ```bash
    git clone https://github.com/TwojaNazwa/AplikacjaSklepikuAP.git
+2. Przejdź do katalogu projektu:
+   ```bash
+   cd AplikacjaSklepikuAP
+3. Zainstaluj zależności:
+   ```bash
+   flutter pub get
+4. Uruchom aplikację:
+   ```bash
+   flutter run
+   
+## Autorzy
+
+- **SzymonCzermak** – Scrum Master, Initiator, Developer.
+- **Patryk Kostecki** – Developer.
+- **Oscar Czempiel** – Developer.

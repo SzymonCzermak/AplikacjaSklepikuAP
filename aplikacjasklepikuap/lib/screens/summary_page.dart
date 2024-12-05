@@ -53,48 +53,53 @@ class _SummaryPageState extends State<SummaryPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionHeader("Podsumowanie"),
-            _editableSummaryRow("Całkowita suma sprzedaży", sumaSprzedazyController),
+            _editableSummaryRow(
+                "Całkowita suma sprzedaży", sumaSprzedazyController),
             Divider(),
-            _editableSummaryRow("Łączna wartość rabatów", sumaRabatyController, color: Colors.red),
+            _editableSummaryRow("Łączna wartość rabatów", sumaRabatyController,
+                color: Colors.red),
             SizedBox(height: 20),
             _sectionHeader("Szczegóły Transakcji"),
             _editableSummaryRow("Transakcje gotówką", sumaGotowkaController),
             _editableSummaryRow("Transakcje kartą", sumaKartaController),
-            _editableSummaryRow("Transakcje z paragonem", sumaParagonController, color: Colors.blue),
+            _editableSummaryRow("Transakcje z paragonem", sumaParagonController,
+                color: Colors.blue),
             Divider(),
             _sectionHeader("Sprzedane Gadżety"),
             SizedBox(height: 10),
             ...GlobalState.iloscGadzetow.entries.map((entry) => Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "${entry.key}: ${entry.value} szt.",
-                  style: TextStyle(fontSize: 16),
-                ),
-                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.remove, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          if (entry.value > 0) {
-                            GlobalState.iloscGadzetow[entry.key] = entry.value - 1;
-                          }
-                        });
-                      },
+                    Text(
+                      "${entry.key}: ${entry.value} szt.",
+                      style: TextStyle(fontSize: 16),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.add, color: Colors.green),
-                      onPressed: () {
-                        setState(() {
-                          GlobalState.iloscGadzetow[entry.key] = entry.value + 1;
-                        });
-                      },
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              if (entry.value > 0) {
+                                GlobalState.iloscGadzetow[entry.key] =
+                                    entry.value - 1;
+                              }
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.add, color: Colors.green),
+                          onPressed: () {
+                            setState(() {
+                              GlobalState.iloscGadzetow[entry.key] =
+                                  entry.value + 1;
+                            });
+                          },
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-            )),
+                )),
           ],
         ),
       ),
@@ -104,11 +109,13 @@ class _SummaryPageState extends State<SummaryPage> {
   Widget _sectionHeader(String title) {
     return Text(
       title,
-      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+      style: TextStyle(
+          fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
     );
   }
 
-  Widget _editableSummaryRow(String label, TextEditingController controller, {Color color = Colors.black}) {
+  Widget _editableSummaryRow(String label, TextEditingController controller,
+      {Color color = Colors.black}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -123,7 +130,8 @@ class _SummaryPageState extends State<SummaryPage> {
             child: TextField(
               controller: controller,
               keyboardType: TextInputType.number,
-              style: TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  fontSize: 16, color: color, fontWeight: FontWeight.bold),
               onChanged: (value) {
                 setState(() {
                   double parsedValue = double.tryParse(value) ?? 0.0;
@@ -161,19 +169,35 @@ class _SummaryPageState extends State<SummaryPage> {
             children: [
               pw.Text(
                 "Ogólne Podsumowanie Sprzedaży - $formattedDate",
-                style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, font: ttf),
+                style: pw.TextStyle(
+                    fontSize: 22, fontWeight: pw.FontWeight.bold, font: ttf),
               ),
               pw.SizedBox(height: 10),
-              pw.Text("Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł", style: pw.TextStyle(fontSize: 18, font: ttf)),
+              pw.Text(
+                  "Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
+                  style: pw.TextStyle(fontSize: 18, font: ttf)),
               pw.Divider(),
-              pw.Text("Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł", style: pw.TextStyle(fontSize: 16, color: PdfColors.red, font: ttf)),
+              pw.Text(
+                  "Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
+                  style: pw.TextStyle(
+                      fontSize: 16, color: PdfColors.red, font: ttf)),
               pw.SizedBox(height: 10),
-              pw.Text("Transakcje gotówką: ${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)", style: pw.TextStyle(font: ttf)),
-              pw.Text("Transakcje kartą: ${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)", style: pw.TextStyle(font: ttf)),
-              pw.Text("Transakcje z paragonem: ${GlobalState.liczbaTransakcjiParagon} (suma: ${GlobalState.sumaParagon.toStringAsFixed(2)} zł)", style: pw.TextStyle(color: PdfColors.blue, font: ttf)),              
+              pw.Text(
+                  "Transakcje gotówką: ${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)",
+                  style: pw.TextStyle(font: ttf)),
+              pw.Text(
+                  "Transakcje kartą: ${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)",
+                  style: pw.TextStyle(font: ttf)),
+              pw.Text(
+                  "Transakcje z paragonem: ${GlobalState.liczbaTransakcjiParagon} (suma: ${GlobalState.sumaParagon.toStringAsFixed(2)} zł)",
+                  style: pw.TextStyle(color: PdfColors.blue, font: ttf)),
               pw.Divider(),
-              pw.Text("Sprzedane Gadżety:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, font: ttf)),
-              ...GlobalState.iloscGadzetow.entries.map((entry) => pw.Text("${entry.key}: ${entry.value} szt.", style: pw.TextStyle(fontSize: 16, font: ttf))),
+              pw.Text("Sprzedane Gadżety:",
+                  style: pw.TextStyle(
+                      fontSize: 18, fontWeight: pw.FontWeight.bold, font: ttf)),
+              ...GlobalState.iloscGadzetow.entries.map((entry) => pw.Text(
+                  "${entry.key}: ${entry.value} szt.",
+                  style: pw.TextStyle(fontSize: 16, font: ttf))),
             ],
           );
         },

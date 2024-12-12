@@ -70,8 +70,20 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
 
     if (ilosc == 0) return 0.0;
 
-    final rabatKwota = rabat ? (cena * 0.1).floorToDouble() : 0.0;
-    return (ilosc * cena) - rabatKwota;
+    double rabatKwota = rabat
+        ? (cena * 0.1 >= 1 ? (cena * 0.1).floorToDouble() : (cena * 0.1))
+        : 0.0;
+    final cenaCalkowita = (ilosc * cena) - rabatKwota;
+
+    // Debugowanie
+    print("Obliczanie rabatu dla: $nazwa");
+    print("Cena: $cena");
+    print("Ilość: $ilosc");
+    print("Rabat użyty: $rabat");
+    print("Rabat kwota: $rabatKwota");
+    print("Cena całkowita: $cenaCalkowita");
+
+    return cenaCalkowita;
   }
 
   void _updateKoszyk() {
@@ -225,7 +237,7 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            "Cena całkowita: ${cenaCalkowita.toStringAsFixed(2)} zł",
+                            "Cena całkowita: ${cenaCalkowita.toStringAsFixed(0)} zł",
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.deepPurple,

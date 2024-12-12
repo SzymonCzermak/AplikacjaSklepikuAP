@@ -14,7 +14,6 @@ class KoszykWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lista przedmiotów w koszyku
     List<Map<String, dynamic>> koszyk = gadzety
         .where((gadzet) =>
             iloscDoZakupu[gadzet.nazwa] != null &&
@@ -23,9 +22,13 @@ class KoszykWidget extends StatelessWidget {
       double cena = gadzet.cena ?? 0.0;
       int ilosc = iloscDoZakupu[gadzet.nazwa] ?? 0;
 
-      // Uwzględnienie rabatu na JEDEN produkt
+      // Oblicz rabat
       bool rabat = rabatUzyty[gadzet.nazwa] ?? false;
-      double rabatKwota = rabat ? (cena * 0.1).floorToDouble() : 0.0;
+      double rabatKwota = rabat
+          ? (cena * 0.1 >= 1 ? (cena * 0.1).floorToDouble() : cena * 0.1)
+          : 0.0;
+
+      // Cena całkowita
       double cenaCalkowita = (ilosc * cena) - rabatKwota;
 
       return {
@@ -34,11 +37,10 @@ class KoszykWidget extends StatelessWidget {
         "cena": cena,
         "rabat": rabat,
         "rabatKwota": rabatKwota,
-        "cenaCalkowita": cenaCalkowita,
+        "cenaCalkowita": cenaCalkowita.toInt(),
       };
     }).toList();
 
-    // Oblicz całkowitą wartość koszyka
     double suma = koszyk.fold(0, (sum, item) => sum + item["cenaCalkowita"]);
 
     return Dialog(
@@ -138,7 +140,7 @@ class KoszykWidget extends StatelessWidget {
               children: [
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context); // Zamknij dialog
+                    Navigator.pop(context);
                   },
                   child: Text(
                     "Zamknij",
@@ -147,9 +149,7 @@ class KoszykWidget extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Obsługa przejścia do płatności
                     Navigator.pop(context);
-                    // Możesz tutaj przekierować do PaymentScreen
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,

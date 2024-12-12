@@ -4,7 +4,7 @@ import '../models/gadzet.dart';
 class KoszykWidget extends StatelessWidget {
   final Map<String, int> iloscDoZakupu;
   final List<Gadzet> gadzety;
-  final Map<String, bool> rabatUzyty; // Dodanie mapy rabatów
+  final Map<String, bool> rabatUzyty;
 
   KoszykWidget({
     required this.iloscDoZakupu,

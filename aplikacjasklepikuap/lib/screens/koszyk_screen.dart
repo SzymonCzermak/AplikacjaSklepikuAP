@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/gadzet.dart';
+import 'package:aplikacjasklepikuap/utils/global_state.dart';
 
 class KoszykWidget extends StatelessWidget {
   final Map<String, int> iloscDoZakupu;
@@ -149,15 +150,40 @@ class KoszykWidget extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    double sumaTransakcji = 0.0;
+                    double sumaRabatyTransakcji = 0.0;
+
+                    koszyk.forEach((item) {
+                      String nazwa = item['nazwa'];
+                      int ilosc = item['ilosc'];
+                      double cena = item['cena'];
+                      double rabatKwota = item['rabatKwota'];
+
+                      // Aktualizacja sprzedanych gadżetów
+                      if (GlobalState.sprzedaneGadzety.containsKey(nazwa)) {
+                        GlobalState.sprzedaneGadzety[nazwa] =
+                            GlobalState.sprzedaneGadzety[nazwa]! + ilosc;
+                      } else {
+                        GlobalState.sprzedaneGadzety[nazwa] = ilosc;
+                      }
+
+                      // Dodanie do sumy transakcji
+                      sumaTransakcji += (ilosc * cena) - rabatKwota;
+                      sumaRabatyTransakcji += rabatKwota;
+                    });
+
+                    // Aktualizacja globalnych wartości
+                    GlobalState.sumaSprzedazy =
+                        sumaTransakcji; // Precyzyjna suma
+                    GlobalState.sumaRabaty = sumaRabatyTransakcji;
+
+                    // Czyszczenie koszyka
+                    iloscDoZakupu.clear();
+
+                    // Zamknięcie dialogu
                     Navigator.pop(context);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                  ),
-                  child: Text(
-                    "Do płatności",
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  child: Text("Do płatności"),
                 ),
               ],
             ),

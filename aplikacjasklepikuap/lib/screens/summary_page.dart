@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:flutter/services.dart' show rootBundle;
@@ -18,10 +19,10 @@ class _SummaryPageState extends State<SummaryPage> {
   final String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
   // Dodano kontrolery tekstowe dla sum
-  final TextEditingController sumaSprzedazyController =
-      TextEditingController(text: GlobalState.sumaSprzedazy.toStringAsFixed(2));
-  final TextEditingController sumaRabatyController =
-      TextEditingController(text: GlobalState.sumaRabaty.toStringAsFixed(2));
+  // final TextEditingController sumaSprzedazyController =
+  //     TextEditingController(text: GlobalState.sumaSprzedazy.toStringAsFixed(2));
+  // final TextEditingController sumaRabatyController =
+  //     TextEditingController(text: GlobalState.sumaRabaty.toStringAsFixed(2));
   final TextEditingController sumaGotowkaController =
       TextEditingController(text: GlobalState.sumaGotowka.toStringAsFixed(2));
   final TextEditingController sumaKartaController =
@@ -31,6 +32,12 @@ class _SummaryPageState extends State<SummaryPage> {
 
   @override
   Widget build(BuildContext context) {
+    @override
+    void didChangeDependencies() {
+      super.didChangeDependencies();
+      setState(() {}); // Odświeżenie widoku
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -53,11 +60,38 @@ class _SummaryPageState extends State<SummaryPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionHeader("Podsumowanie"),
-            _editableSummaryRow(
-                "Całkowita suma sprzedaży", sumaSprzedazyController),
-            Divider(),
-            _editableSummaryRow("Łączna wartość rabatów", sumaRabatyController,
-                color: Colors.red),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Całkowita suma sprzedaży:",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  "${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Łączna wartość rabatów:",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  "${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 20),
             _sectionHeader("Szczegóły Transakcji"),
             _editableSummaryRow("Transakcje gotówką", sumaGotowkaController),
@@ -67,39 +101,87 @@ class _SummaryPageState extends State<SummaryPage> {
             Divider(),
             _sectionHeader("Sprzedane Gadżety"),
             SizedBox(height: 10),
-            ...GlobalState.iloscGadzetow.entries.map((entry) => Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "${entry.key}: ${entry.value} szt.",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.remove, color: Colors.red),
-                          onPressed: () {
-                            setState(() {
-                              if (entry.value > 0) {
-                                GlobalState.iloscGadzetow[entry.key] =
-                                    entry.value - 1;
-                              }
-                            });
-                          },
+            if (GlobalState.sprzedaneGadzety.isNotEmpty)
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Nazwa Gadżetu",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blueGrey[800],
                         ),
-                        IconButton(
-                          icon: Icon(Icons.add, color: Colors.green),
-                          onPressed: () {
-                            setState(() {
-                              GlobalState.iloscGadzetow[entry.key] =
-                                  entry.value + 1;
-                            });
-                          },
+                      ),
+                      Text(
+                        "Ilość",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blueGrey[800],
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  Divider(thickness: 1.5, color: Colors.grey[300]),
+                  ...GlobalState.sprzedaneGadzety.entries
+                      .map((entry) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  entry.key,
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.black87),
+                                ),
+                                Text(
+                                  "${entry.value} szt.",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                  Divider(thickness: 1.5, color: Colors.grey[300]),
+                  SizedBox(height: 20),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await _saveSummaryToFirebase();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        "Zakończ Dzień",
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
                     ),
-                  ],
-                )),
+                  ),
+                ],
+              )
+            else
+              Center(
+                child: Text(
+                  "Brak sprzedanych gadżetów.",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -155,6 +237,42 @@ class _SummaryPageState extends State<SummaryPage> {
     );
   }
 
+//funkcja do zakonczenia dnia i dodania informacji do bazy danych
+  Future<void> _saveSummaryToFirebase() async {
+    try {
+      final now = DateTime.now();
+      final formattedDate = DateFormat('yyyy-MM-dd').format(now);
+
+      // Tworzymy obiekt danych do zapisania
+      Map<String, dynamic> summaryData = {
+        'date': formattedDate,
+        'sumaSprzedazy': GlobalState.sumaSprzedazy,
+        'sumaRabaty': GlobalState.sumaRabaty,
+        'sumaGotowka': GlobalState.sumaGotowka,
+        'sumaKarta': GlobalState.sumaKarta,
+        'sumaParagon': GlobalState.sumaParagon,
+        'sprzedaneGadzety': GlobalState.sprzedaneGadzety,
+      };
+
+      // Zapisujemy dane do Firestore
+      await FirebaseFirestore.instance
+          .collection('summaryReports')
+          .add(summaryData);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dane zostały zapisane do bazy danych!')),
+      );
+
+      // Resetowanie strony po zapisaniu danych
+      _resetSummaryPage();
+    } catch (e) {
+      print("Błąd podczas zapisywania do Firestore: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Wystąpił błąd podczas zapisywania danych.')),
+      );
+    }
+  }
+
   Future<Uint8List> _generatePdf() async {
     final pdf = pw.Document();
     final fontData = await rootBundle.load("assets/gadzety/Fonts/arial.ttf");
@@ -168,36 +286,88 @@ class _SummaryPageState extends State<SummaryPage> {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                "Ogólne Podsumowanie Sprzedaży - $formattedDate",
+                "Podsumowanie sprzedaży - $formattedDate",
                 style: pw.TextStyle(
-                    fontSize: 22, fontWeight: pw.FontWeight.bold, font: ttf),
+                  fontSize: 22,
+                  fontWeight: pw.FontWeight.bold,
+                  font: ttf,
+                ),
               ),
               pw.SizedBox(height: 10),
               pw.Text(
-                  "Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
-                  style: pw.TextStyle(fontSize: 18, font: ttf)),
-              pw.Divider(),
+                "Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
+                style: pw.TextStyle(fontSize: 18, font: ttf),
+              ),
               pw.Text(
-                  "Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
-                  style: pw.TextStyle(
-                      fontSize: 16, color: PdfColors.red, font: ttf)),
+                "Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  font: ttf,
+                  color: PdfColors.red,
+                ),
+              ),
               pw.SizedBox(height: 10),
+              pw.Divider(thickness: 1, color: PdfColors.grey),
               pw.Text(
-                  "Transakcje gotówką: ${GlobalState.liczbaTransakcjiGotowka} (suma: ${GlobalState.sumaGotowka.toStringAsFixed(2)} zł)",
-                  style: pw.TextStyle(font: ttf)),
-              pw.Text(
-                  "Transakcje kartą: ${GlobalState.liczbaTransakcjiKarta} (suma: ${GlobalState.sumaKarta.toStringAsFixed(2)} zł)",
-                  style: pw.TextStyle(font: ttf)),
-              pw.Text(
-                  "Transakcje z paragonem: ${GlobalState.liczbaTransakcjiParagon} (suma: ${GlobalState.sumaParagon.toStringAsFixed(2)} zł)",
-                  style: pw.TextStyle(color: PdfColors.blue, font: ttf)),
-              pw.Divider(),
-              pw.Text("Sprzedane Gadżety:",
+                "Sprzedane Gadżety:",
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  font: ttf,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              if (GlobalState.sprzedaneGadzety.isNotEmpty)
+                pw.Table(
+                  border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
+                  children: [
+                    // Nagłówki tabeli
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: PdfColors.grey300),
+                      children: [
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text("Nazwa Gadżetu",
+                              style: pw.TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: pw.FontWeight.bold,
+                                  font: ttf)),
+                        ),
+                        pw.Padding(
+                          padding: const pw.EdgeInsets.all(8),
+                          child: pw.Text("Ilość",
+                              style: pw.TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: pw.FontWeight.bold,
+                                  font: ttf)),
+                        ),
+                      ],
+                    ),
+                    // Dane z GlobalState
+                    ...GlobalState.sprzedaneGadzety.entries.map(
+                      (entry) => pw.TableRow(
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(entry.key,
+                                style: pw.TextStyle(fontSize: 14, font: ttf)),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text("${entry.value} szt.",
+                                style: pw.TextStyle(fontSize: 14, font: ttf)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                pw.Text(
+                  "Brak sprzedanych gadżetów.",
                   style: pw.TextStyle(
-                      fontSize: 18, fontWeight: pw.FontWeight.bold, font: ttf)),
-              ...GlobalState.iloscGadzetow.entries.map((entry) => pw.Text(
-                  "${entry.key}: ${entry.value} szt.",
-                  style: pw.TextStyle(fontSize: 16, font: ttf))),
+                      fontSize: 14, fontStyle: pw.FontStyle.italic, font: ttf),
+                ),
             ],
           );
         },
@@ -205,6 +375,23 @@ class _SummaryPageState extends State<SummaryPage> {
     );
 
     return pdf.save();
+  }
+
+  void _resetSummaryPage() {
+    setState(() {
+      // Resetowanie wszystkich wartości w GlobalState
+      GlobalState.sumaSprzedazy = 0.0;
+      GlobalState.sumaRabaty = 0.0;
+      GlobalState.sumaGotowka = 0.0;
+      GlobalState.sumaKarta = 0.0;
+      GlobalState.sumaParagon = 0.0;
+      GlobalState.sprzedaneGadzety.clear();
+
+      // Czyszczenie kontrolerów tekstowych
+      sumaGotowkaController.text = "0.00";
+      sumaKartaController.text = "0.00";
+      sumaParagonController.text = "0.00";
+    });
   }
 
   void _openPdfInNewTab(Uint8List pdfData) {

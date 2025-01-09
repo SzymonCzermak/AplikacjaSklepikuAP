@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:aplikacjasklepikuap/screens/koszyk_screen.dart';
 import '../models/gadzet.dart';
+import 'koszyk_screen.dart';
 
 class GadzetSelectionScreen extends StatefulWidget {
   @override
@@ -28,20 +28,13 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
 
       gadzety = snapshot.docs.map((doc) {
         final data = doc.data();
-        final nazwa = data['Nazwa'] ?? 'Nieznany';
-        final cena =
-            (data['Cena'] is num) ? (data['Cena'] as num).toDouble() : 0.0;
-        final ilosc = data['Ilość'] ?? 0;
+        final gadzet = Gadzet.fromFirestore(data);
 
-        iloscZFirebase[nazwa] = ilosc;
-        iloscDoZakupu[nazwa] = 0;
-        rabatUzyty[nazwa] = false;
+        iloscZFirebase[gadzet.nazwa] = data['Ilość'] ?? 0;
+        iloscDoZakupu[gadzet.nazwa] = 0;
+        rabatUzyty[gadzet.nazwa] = false;
 
-        return Gadzet(
-          nazwa: nazwa,
-          cena: cena,
-          obrazek: 'assets/gadzety/$nazwa.png',
-        );
+        return gadzet;
       }).toList();
 
       setState(() {});
@@ -65,23 +58,15 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
 
   double _obliczCeneCalkowita(String nazwa) {
     final ilosc = iloscDoZakupu[nazwa] ?? 0;
-    final cena = gadzety.firstWhere((g) => g.nazwa == nazwa).cena;
-    final rabat = rabatUzyty[nazwa] ?? false;
+    final gadzet = gadzety.firstWhere((g) => g.nazwa == nazwa);
+    final cena = gadzet.cena;
+    final rabat = rabatUzyty[nazwa]! ? gadzet.rabat : 0.0;
 
     if (ilosc == 0) return 0.0;
 
-    double rabatKwota = rabat
-        ? (cena * 0.1 >= 1 ? (cena * 0.1).floorToDouble() : (cena * 0.1))
-        : 0.0;
-    final cenaCalkowita = (ilosc * cena) - rabatKwota;
-
-    // Debugowanie
-    print("Obliczanie rabatu dla: $nazwa");
-    print("Cena: $cena");
-    print("Ilość: $ilosc");
-    print("Rabat użyty: $rabat");
-    print("Rabat kwota: $rabatKwota");
-    print("Cena całkowita: $cenaCalkowita");
+    final rabatKwota = rabat; // Rabat tylko na jeden egzemplarz
+    final cenaCalkowita = (ilosc > 0 ? (ilosc - 1) * cena : 0.0) +
+        (ilosc > 0 ? cena - rabatKwota : 0.0);
 
     return cenaCalkowita;
   }
@@ -106,7 +91,7 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Wybierz gadżety"),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: const Color.fromARGB(255, 180, 179, 179),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -152,158 +137,167 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
           ),
         ],
       ),
-      body: gadzety.isEmpty
-          ? Center(
-              child: Text(
-                "Brak gadżetów do wyświetlenia.",
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 10.0,
-                  mainAxisSpacing: 10.0,
-                  childAspectRatio: 0.96,
-                ),
-                itemCount: gadzety.length,
-                itemBuilder: (context, index) {
-                  final gadzet = gadzety[index];
-                  final iloscWMagazynie = iloscZFirebase[gadzet.nazwa] ?? 0;
-                  final iloscZakupu = iloscDoZakupu[gadzet.nazwa] ?? 0;
-                  final rabat = rabatUzyty[gadzet.nazwa]!;
-
-                  final cenaCalkowita = _obliczCeneCalkowita(gadzet.nazwa);
-
-                  return Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+      body: Stack(
+        children: [
+          gadzety.isEmpty
+              ? Center(
+                  child: Text(
+                    "Brak gadżetów do wyświetlenia.",
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                )
+              : Padding(
+                  padding:
+                      const EdgeInsets.only(bottom: 80.0), // Odstęp na koszyk
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 10.0,
+                      mainAxisSpacing: 0.8,
+                      childAspectRatio: 1,
                     ),
-                    color: Colors.deepPurple[50],
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset(
-                                gadzet.obrazek,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/placeholder.png',
-                                    fit: BoxFit.cover,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            gadzet.nazwa,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple[800],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
-                            style:
-                                TextStyle(fontSize: 14, color: Colors.black87),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Ilość w magazynie: $iloscWMagazynie",
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.grey[600]),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Ilość do zakupu: $iloscZakupu",
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.grey[600]),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Cena całkowita: ${cenaCalkowita.toStringAsFixed(0)} zł",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.deepPurple,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    itemCount: gadzety.length,
+                    itemBuilder: (context, index) {
+                      final gadzet = gadzety[index];
+                      final iloscWMagazynie = iloscZFirebase[gadzet.nazwa] ?? 0;
+                      final iloscZakupu = iloscDoZakupu[gadzet.nazwa] ?? 0;
+                      final cenaCalkowita = _obliczCeneCalkowita(gadzet.nazwa);
+
+                      return Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        color: Colors.deepPurple[50],
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              IconButton(
-                                icon: Icon(Icons.discount,
-                                    color: rabat
-                                        ? Colors.grey
-                                        : Colors.green[700]),
-                                onPressed: () {
-                                  if (!rabat && iloscZakupu > 0) {
-                                    setState(() {
-                                      rabatUzyty[gadzet.nazwa] = true;
-                                      print(
-                                          "Rabat zastosowany dla: ${gadzet.nazwa}");
-                                    });
-                                  } else {
-                                    print(
-                                        "Nie można zastosować rabatu dla: ${gadzet.nazwa}");
-                                  }
-                                },
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.asset(
+                                    gadzet.obrazek,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Image.asset(
+                                        'assets/placeholder.png',
+                                        fit: BoxFit.contain,
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
-                              IconButton(
-                                icon: Icon(Icons.add_circle,
-                                    color: Colors.deepPurple),
-                                onPressed: () {
-                                  if (iloscWMagazynie > 0) {
-                                    setState(() {
-                                      iloscDoZakupu[gadzet.nazwa] =
-                                          iloscZakupu + 1;
-                                      _updateIlosc(
-                                          gadzet.nazwa, iloscWMagazynie - 1);
-                                    });
-                                  }
-                                },
+                              SizedBox(height: 8),
+                              Text(
+                                gadzet.nazwa,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple[800],
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              IconButton(
-                                icon: Icon(Icons.remove_circle,
-                                    color: Colors.redAccent),
-                                onPressed: () {
-                                  if (iloscZakupu > 0) {
-                                    setState(() {
-                                      iloscDoZakupu[gadzet.nazwa] =
-                                          iloscZakupu - 1;
-                                      _updateIlosc(
-                                          gadzet.nazwa, iloscWMagazynie + 1);
-                                    });
-                                  }
-                                },
+                              SizedBox(height: 4),
+                              Text(
+                                "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.black87),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Rabat: ${gadzet.rabat.toStringAsFixed(2)} zł",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.green[700]),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Ilość w magazynie: $iloscWMagazynie",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Ilość do zakupu: $iloscZakupu",
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "Cena całkowita: ${cenaCalkowita.toStringAsFixed(2)} zł",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.deepPurple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      rabatUzyty[gadzet.nazwa]!
+                                          ? Icons.undo
+                                          : Icons.discount,
+                                      color: rabatUzyty[gadzet.nazwa]!
+                                          ? const Color.fromARGB(255, 0, 4, 255)
+                                          : Colors.green[700],
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        rabatUzyty[gadzet.nazwa] =
+                                            !rabatUzyty[gadzet.nazwa]!;
+                                      });
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.add_circle,
+                                        color: Colors.deepPurple),
+                                    onPressed: () {
+                                      if (iloscWMagazynie > 0) {
+                                        setState(() {
+                                          iloscDoZakupu[gadzet.nazwa] =
+                                              iloscZakupu + 1;
+                                          _updateIlosc(gadzet.nazwa,
+                                              iloscWMagazynie - 1);
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.remove_circle,
+                                        color: Colors.redAccent),
+                                    onPressed: () {
+                                      if (iloscZakupu > 0) {
+                                        setState(() {
+                                          iloscDoZakupu[gadzet.nazwa] =
+                                              iloscZakupu - 1;
+                                          _updateIlosc(gadzet.nazwa,
+                                              iloscWMagazynie + 1);
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+        ],
+      ),
     );
   }
 }

@@ -5,66 +5,114 @@ import 'home_page.dart';
 
 class PaymentScreen extends StatefulWidget {
   final List<Gadzet> koszyk;
+  final Map<String, bool> rabatUzyty;
 
-  PaymentScreen({required this.koszyk});
+  PaymentScreen({required this.koszyk, required this.rabatUzyty});
 
   @override
   _PaymentScreenState createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  bool paragonWystawiony = false; // Zmienna do przechowywania stanu przełącznika
+  bool paragonWystawiony = false;
 
-  void finalizeTransaction(String metodaPlatnosci, BuildContext context) {
-    double suma = 0;
-    double sumaRabatyTransakcji = 0; // Suma rabatów dla tej konkretnej transakcji
-    Map<String, int> koszykZliczanie = {};
+  double _sumaCalkowita = 0.0;
+  double _sumaRabaty = 0.0;
+  Map<String, int> _koszykZliczanie = {};
 
-    // Zlicza liczbę egzemplarzy każdego gadżetu w koszyku
-    widget.koszyk.forEach((gadzet) {
-      koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
+  /// Oblicza podsumowanie koszyka
+  void _obliczPodsumowanie() {
+    _sumaCalkowita = 0.0;
+    _sumaRabaty = 0.0;
+    _koszykZliczanie.clear();
+
+    for (var gadzet in widget.koszyk) {
+      _koszykZliczanie[gadzet.nazwa] =
+          (_koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
+    }
+
+    _koszykZliczanie.forEach((nazwa, ilosc) {
+      final gadzet = widget.koszyk.firstWhere(
+        (item) => item.nazwa == nazwa,
+        orElse: () => Gadzet(
+          nazwa: "Nieznany",
+          cena: 0.0,
+          obrazek: '',
+          rabat: 0.0,
+        ),
+      );
+
+      // Sprawdzenie, czy rabat był użyty
+      bool rabatUzyty = widget.rabatUzyty[nazwa] ?? false;
+
+      // Rabat naliczany tylko na jedną sztukę, jeśli został użyty
+      double rabatNaJednostke = rabatUzyty ? gadzet.rabat : 0.0;
+      double cenaPierwszegoZRabatem = gadzet.cena - rabatNaJednostke;
+
+      // Obliczenia cen dla pozostałych egzemplarzy
+      double cenaPozostalych = (ilosc - 1) * gadzet.cena;
+
+      // Łączna cena dla tego produktu
+      double lacznaCena = cenaPierwszegoZRabatem + cenaPozostalych;
+
+      // Aktualizacja sum
+      _sumaRabaty += rabatNaJednostke; // Rabat naliczany tylko raz, jeśli użyty
+      _sumaCalkowita += lacznaCena;
     });
+  }
 
-    koszykZliczanie.forEach((nazwa, ilosc) {
-      Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == nazwa);
+  /// Finalizuje transakcję
+  void _finalizeTransaction(String metodaPlatnosci) {
+    double sumaField = metodaPlatnosci == "Gotówka"
+        ? GlobalState.sumaGotowka
+        : GlobalState.sumaKarta;
 
-      // Rabat tylko na jeden egzemplarz, reszta w pełnej cenie
-      if (gadzet.licznikZnizki > 0 && ilosc > 0) {
-        double cenaPoRabacie = (gadzet.cena * 0.9).floorToDouble();
-        suma += cenaPoRabacie + (ilosc - 1) * gadzet.cena;
-        sumaRabatyTransakcji += gadzet.cena - cenaPoRabacie;
+    double sumaRabatyField = metodaPlatnosci == "Gotówka"
+        ? GlobalState.sumaRabatyGotowka
+        : GlobalState.sumaRabatyKarta;
+
+    sumaField += _sumaCalkowita;
+    sumaRabatyField += _sumaRabaty;
+
+    if (metodaPlatnosci == "Gotówka") {
+      GlobalState.sumaGotowka = sumaField;
+      GlobalState.sumaRabatyGotowka = sumaRabatyField;
+    } else {
+      GlobalState.sumaKarta = sumaField;
+      GlobalState.sumaRabatyKarta = sumaRabatyField;
+    }
+
+    final transactionsList = metodaPlatnosci == "Gotówka"
+        ? GlobalState.gotowkaTransactions
+        : GlobalState.kartaTransactions;
+
+    Map<String, Map<String, dynamic>> groupedTransactions = {};
+
+    _koszykZliczanie.forEach((nazwa, ilosc) {
+      final gadzet = widget.koszyk.firstWhere((item) => item.nazwa == nazwa);
+      bool rabatUzyty = widget.rabatUzyty[nazwa] ?? false;
+      double rabatNaJednostke = rabatUzyty ? gadzet.rabat : 0.0;
+      double cenaPierwszegoZRabatem = gadzet.cena - rabatNaJednostke;
+      double cenaPozostalych = (ilosc - 1) * gadzet.cena;
+
+      double lacznaCena = cenaPierwszegoZRabatem + cenaPozostalych;
+
+      if (groupedTransactions.containsKey(nazwa)) {
+        groupedTransactions[nazwa]!['ilosc'] += ilosc;
+        groupedTransactions[nazwa]!['kwota'] += lacznaCena;
+        groupedTransactions[nazwa]!['rabat'] += rabatNaJednostke;
       } else {
-        suma += gadzet.cena * ilosc;
+        groupedTransactions[nazwa] = {
+          'gadzet': nazwa,
+          'ilosc': ilosc,
+          'kwota': lacznaCena,
+          'rabat': rabatNaJednostke,
+        };
       }
     });
 
-    // Dodajemy sumę rabatów tej transakcji do globalnej sumy rabatów
-    GlobalState.sumaRabaty += sumaRabatyTransakcji;
-
-    // Aktualizuj wartości globalne
-    GlobalState.sumaSprzedazy += suma;
-
-    if (metodaPlatnosci == "Gotówka") {
-      GlobalState.liczbaTransakcjiGotowka++;
-      GlobalState.sumaGotowka += suma;
-    } else {
-      GlobalState.liczbaTransakcjiKarta++;
-      GlobalState.sumaKarta += suma;
-    }
-
-    // Zwiększ licznik paragonów, jeśli paragon został wystawiony
-    if (paragonWystawiony) {
-      GlobalState.liczbaTransakcjiParagon++;
-      GlobalState.sumaParagon += suma;
-    }
-
-    widget.koszyk.forEach((gadzet) {
-      GlobalState.iloscGadzetow[gadzet.nazwa] = (GlobalState.iloscGadzetow[gadzet.nazwa] ?? 0) + 1;
-    });
-
-    // Resetowanie rabatów po transakcji, aby można było je naliczyć w przyszłych transakcjach
-    widget.koszyk.forEach((gadzet) {
-      gadzet.licznikZnizki = 0;
+    groupedTransactions.values.forEach((transaction) {
+      transactionsList.add(transaction);
     });
 
     Navigator.pushReplacement(
@@ -74,25 +122,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _obliczPodsumowanie();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Zlicza liczbę każdego gadżetu w koszyku
-    Map<String, int> koszykZliczanie = {};
-    widget.koszyk.forEach((gadzet) {
-      koszykZliczanie[gadzet.nazwa] = (koszykZliczanie[gadzet.nazwa] ?? 0) + 1;
-    });
-
-    double lacznaKwotaPoRabacie = koszykZliczanie.entries.fold(0.0, (sum, entry) {
-      Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == entry.key);
-      int ilosc = entry.value;
-
-      // Rabat na jeden egzemplarz, pełna cena dla pozostałych
-      double cenaPoRabacie = gadzet.licznikZnizki > 0
-          ? (gadzet.cena * 0.9).floorToDouble() + (ilosc - 1) * gadzet.cena
-          : gadzet.cena * ilosc;
-
-      return sum + cenaPoRabacie;
-    });
-
     return Scaffold(
       appBar: AppBar(title: Text("Wybierz sposób płatności")),
       body: Padding(
@@ -107,42 +143,52 @@ class _PaymentScreenState extends State<PaymentScreen> {
             Divider(),
             Expanded(
               child: ListView.builder(
-                itemCount: koszykZliczanie.length,
+                itemCount: _koszykZliczanie.length,
                 itemBuilder: (context, index) {
-                  String nazwa = koszykZliczanie.keys.elementAt(index);
-                  int ilosc = koszykZliczanie[nazwa]!;
-                  Gadzet gadzet = widget.koszyk.firstWhere((item) => item.nazwa == nazwa);
-                  double rabat = gadzet.licznikZnizki > 0 ? gadzet.cena * 0.1 : 0.0;
+                  String nazwa = _koszykZliczanie.keys.elementAt(index);
+                  int ilosc = _koszykZliczanie[nazwa]!;
+                  Gadzet gadzet = widget.koszyk.firstWhere(
+                    (item) => item.nazwa == nazwa,
+                    orElse: () => Gadzet(
+                      nazwa: "Nieznany",
+                      cena: 0.0,
+                      obrazek: '',
+                      rabat: 0.0,
+                    ),
+                  );
+
+                  bool rabatUzyty = widget.rabatUzyty[nazwa] ?? false;
+                  double rabatNaJednostke = rabatUzyty ? gadzet.rabat : 0.0;
+                  double cenaPoRabacie = gadzet.cena - rabatNaJednostke;
+                  double lacznaCena = cenaPoRabacie + (ilosc - 1) * gadzet.cena;
 
                   return ListTile(
                     title: Text(gadzet.nazwa),
                     subtitle: Text(
-                      "Cena: ${gadzet.cena.toStringAsFixed(2)} zł" +
-                          (rabat > 0 ? " (Rabat: -${rabat.toStringAsFixed(2)} zł)" : ""),
+                      "Cena jednostkowa: ${gadzet.cena.toStringAsFixed(2)} zł" +
+                          (rabatNaJednostke > 0
+                              ? " (Rabat: -${rabatNaJednostke.toStringAsFixed(2)} zł)"
+                              : ""),
                     ),
-                    trailing: Text("Ilość: $ilosc"),
+                    trailing: Text(
+                      "x$ilosc = ${lacznaCena.toStringAsFixed(2)} zł",
+                    ),
                   );
                 },
               ),
             ),
             Divider(),
             Text(
-              "Łączna kwota po rabacie: ${lacznaKwotaPoRabacie.toStringAsFixed(2)} zł",
+              "Łączna kwota: ${_sumaCalkowita.toStringAsFixed(2)} zł",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Text("Paragon wystawiony:"),
-                Switch(
-                  value: paragonWystawiony,
-                  onChanged: (value) {
-                    setState(() {
-                      paragonWystawiony = value;
-                    });
-                  },
-                ),
-              ],
+            Text(
+              "Zaoszczędzono: ${_sumaRabaty.toStringAsFixed(2)} zł",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
             ),
             SizedBox(height: 16),
             Row(
@@ -150,23 +196,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 ElevatedButton.icon(
                   icon: Icon(Icons.credit_card),
-                  onPressed: () => finalizeTransaction("Karta", context),
+                  onPressed: () => _finalizeTransaction("Karta"),
                   label: Text("Płatność kartą"),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30),
                     backgroundColor: Colors.blueAccent,
-                    textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ),
                 SizedBox(width: 20),
                 ElevatedButton.icon(
                   icon: Icon(Icons.money),
-                  onPressed: () => finalizeTransaction("Gotówka", context),
+                  onPressed: () => _finalizeTransaction("Gotówka"),
                   label: Text("Płatność gotówką"),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 20, horizontal: 30),
                     backgroundColor: Colors.green,
-                    textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
                   ),
                 ),
               ],

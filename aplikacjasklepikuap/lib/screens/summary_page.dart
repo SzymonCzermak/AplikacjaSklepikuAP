@@ -1,281 +1,295 @@
+import 'dart:typed_data';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:flutter/services.dart' show rootBundle;
-import 'dart:html' as html;
-import 'dart:typed_data';
 import 'package:intl/intl.dart';
 
 import '../utils/global_state.dart';
-import '../models/gadzet.dart';
 
-class SummaryPage extends StatefulWidget {
+class TransactionsSummaryScreen extends StatefulWidget {
   @override
-  _SummaryPageState createState() => _SummaryPageState();
+  _TransactionsSummaryScreenState createState() =>
+      _TransactionsSummaryScreenState();
 }
 
-class _SummaryPageState extends State<SummaryPage> {
-  final String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
+  final pdf = pw.Document();
+  late String currentTime;
 
-  // Dodano kontrolery tekstowe dla sum
-  // final TextEditingController sumaSprzedazyController =
-  //     TextEditingController(text: GlobalState.sumaSprzedazy.toStringAsFixed(2));
-  // final TextEditingController sumaRabatyController =
-  //     TextEditingController(text: GlobalState.sumaRabaty.toStringAsFixed(2));
-  final TextEditingController sumaGotowkaController =
-      TextEditingController(text: GlobalState.sumaGotowka.toStringAsFixed(2));
-  final TextEditingController sumaKartaController =
-      TextEditingController(text: GlobalState.sumaKarta.toStringAsFixed(2));
-  final TextEditingController sumaParagonController =
-      TextEditingController(text: GlobalState.sumaParagon.toStringAsFixed(2));
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+  }
+
+  void _updateTime() {
+    setState(() {
+      currentTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+    });
+    Future.delayed(Duration(seconds: 1), _updateTime);
+  }
 
   @override
   Widget build(BuildContext context) {
-    @override
-    void didChangeDependencies() {
-      super.didChangeDependencies();
-      setState(() {}); // Odświeżenie widoku
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Podsumowanie sprzedaży z dnia $formattedDate",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
+        title: Text("Podsumowanie Transakcji"),
+        backgroundColor: Colors.deepPurple,
         actions: [
           IconButton(
             icon: Icon(Icons.picture_as_pdf),
-            onPressed: () async {
-              final pdfData = await _generatePdf();
-              _openPdfInNewTab(pdfData);
-            },
+            onPressed: _generatePdfForWeb, // Generowanie PDF dla Web
+            tooltip: "Pobierz jako PDF",
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionHeader("Podsumowanie"),
-            SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Całkowita suma sprzedaży:",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  "${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
+            Text(
+              "Podsumowanie Sprzedaży",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Łączna wartość rabatów:",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  "${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            Text(
+              "Aktualna data i godzina: $currentTime",
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
-            SizedBox(height: 20),
-            _sectionHeader("Szczegóły Transakcji"),
-            _editableSummaryRow("Transakcje gotówką", sumaGotowkaController),
-            _editableSummaryRow("Transakcje kartą", sumaKartaController),
-            _editableSummaryRow("Transakcje z paragonem", sumaParagonController,
-                color: Colors.blue),
-            Divider(),
-            _sectionHeader("Sprzedane Gadżety"),
-            SizedBox(height: 10),
-            if (GlobalState.sprzedaneGadzety.isNotEmpty)
-              Column(
+            SizedBox(height: 16),
+            Expanded(
+              child: ListView(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Nazwa Gadżetu",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blueGrey[800],
-                        ),
-                      ),
-                      Text(
-                        "Ilość",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blueGrey[800],
-                        ),
-                      ),
-                    ],
+                  _buildTransactionGroup(
+                    title: "Transakcje za Gotówkę",
+                    transactions: GlobalState.gotowkaTransactions,
+                    totalAmount: GlobalState.sumaGotowka,
+                    totalDiscount: GlobalState.sumaRabatyGotowka,
+                    color: Colors.green[100]!,
+                    borderColor: Colors.green[600]!,
                   ),
-                  Divider(thickness: 1.5, color: Colors.grey[300]),
-                  ...GlobalState.sprzedaneGadzety.entries
-                      .map((entry) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  entry.key,
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.black87),
-                                ),
-                                Text(
-                                  "${entry.value} szt.",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )),
-                  Divider(thickness: 1.5, color: Colors.grey[300]),
-                  SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        await _saveSummaryToFirebase();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        "Zakończ Dzień",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                    ),
+                  SizedBox(height: 16),
+                  _buildTransactionGroup(
+                    title: "Transakcje za Kartę",
+                    transactions: GlobalState.kartaTransactions,
+                    totalAmount: GlobalState.sumaKarta,
+                    totalDiscount: GlobalState.sumaRabatyKarta,
+                    color: Colors.blue[100]!,
+                    borderColor: Colors.blue[600]!,
+                  ),
+                  SizedBox(height: 16),
+                  _buildTransactionGroup(
+                    title: "Ogólne Transakcje",
+                    transactions: _mergeTransactions(),
+                    totalAmount:
+                        GlobalState.sumaGotowka + GlobalState.sumaKarta,
+                    totalDiscount: GlobalState.sumaRabatyGotowka +
+                        GlobalState.sumaRabatyKarta,
+                    color: Colors.red[100]!,
+                    borderColor: Colors.red[600]!,
                   ),
                 ],
-              )
-            else
-              Center(
-                child: Text(
-                  "Brak sprzedanych gadżetów.",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey,
-                  ),
-                ),
               ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-          fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+  /// Merges gotówka and karta transactions and adds a `metodaPlatnosci` field.
+  List<Map<String, dynamic>> _mergeTransactions() {
+    return [
+      ...GlobalState.gotowkaTransactions.map((transaction) {
+        return {
+          ...transaction,
+          'metodaPlatnosci': 'Gotówka',
+        };
+      }),
+      ...GlobalState.kartaTransactions.map((transaction) {
+        return {
+          ...transaction,
+          'metodaPlatnosci': 'Karta',
+        };
+      }),
+    ];
+  }
+
+  Widget _buildTransactionGroup({
+    required String title,
+    required List<Map<String, dynamic>> transactions,
+    required double totalAmount,
+    required double totalDiscount,
+    required Color color,
+    required Color borderColor,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(color: borderColor, width: 2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: borderColor,
+              ),
+            ),
+            SizedBox(height: 8),
+            transactions.isEmpty
+                ? Text(
+                    "Brak transakcji.",
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  )
+                : Column(
+                    children: List.generate(
+                      transactions.length,
+                      (index) => _buildTransactionCard(
+                        transaction: transactions[index],
+                        index: index + 1,
+                        borderColor: borderColor,
+                        showMethod: title == "Ogólne Transakcje",
+                      ),
+                    ),
+                  ),
+            Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Łączna Kwota:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text("${totalAmount.toStringAsFixed(2)} zł"),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Łączne Rabaty:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text("-${totalDiscount.toStringAsFixed(2)} zł"),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Liczba Transakcji:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text("${transactions.length}"),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _editableSummaryRow(String label, TextEditingController controller,
-      {Color color = Colors.black}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildTransactionCard({
+    required Map<String, dynamic> transaction,
+    required int index,
+    required Color borderColor,
+    bool showMethod = false,
+  }) {
+    Color cardColor = transaction['metodaPlatnosci'] == 'Gotówka'
+        ? Colors.green[50]!
+        : Colors.blue[50]!;
+    Color textColor = transaction['metodaPlatnosci'] == 'Gotówka'
+        ? Colors.green[900]!
+        : Colors.blue[900]!;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            label,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-          SizedBox(
-            width: 100, // szerokość pola tekstowego
-            child: TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              style: TextStyle(
-                  fontSize: 16, color: color, fontWeight: FontWeight.bold),
-              onChanged: (value) {
-                setState(() {
-                  double parsedValue = double.tryParse(value) ?? 0.0;
-                  if (label == "Całkowita suma sprzedaży") {
-                    GlobalState.sumaSprzedazy = parsedValue;
-                  } else if (label == "Łączna wartość rabatów") {
-                    GlobalState.sumaRabaty = parsedValue;
-                  } else if (label.contains("gotówką")) {
-                    GlobalState.sumaGotowka = parsedValue;
-                  } else if (label.contains("kartą")) {
-                    GlobalState.sumaKarta = parsedValue;
-                  } else if (label.contains("paragonem")) {
-                    GlobalState.sumaParagon = parsedValue;
-                  }
-                });
-              },
+            "Transakcja #$index",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: textColor,
             ),
           ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Text(
+                  transaction['gadzet'],
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  "Ilość: ${transaction['ilosc']}",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  "Kwota: ${transaction['kwota'].toStringAsFixed(2)} zł",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  "Rabat: -${transaction['rabat'].toStringAsFixed(2)} zł",
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: textColor),
+                ),
+              ),
+            ],
+          ),
+          if (showMethod)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                "Metoda Płatności: ${transaction['metodaPlatnosci']}",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-//funkcja do zakonczenia dnia i dodania informacji do bazy danych
-  Future<void> _saveSummaryToFirebase() async {
-    try {
-      final now = DateTime.now();
-      final formattedDate = DateFormat('yyyy-MM-dd').format(now);
-
-      // Tworzymy obiekt danych do zapisania
-      Map<String, dynamic> summaryData = {
-        'date': formattedDate,
-        'sumaSprzedazy': GlobalState.sumaSprzedazy,
-        'sumaRabaty': GlobalState.sumaRabaty,
-        'sumaGotowka': GlobalState.sumaGotowka,
-        'sumaKarta': GlobalState.sumaKarta,
-        'sumaParagon': GlobalState.sumaParagon,
-        'sprzedaneGadzety': GlobalState.sprzedaneGadzety,
-      };
-
-      // Zapisujemy dane do Firestore
-      await FirebaseFirestore.instance
-          .collection('summaryReports')
-          .add(summaryData);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dane zostały zapisane do bazy danych!')),
-      );
-
-      // Resetowanie strony po zapisaniu danych
-      _resetSummaryPage();
-    } catch (e) {
-      print("Błąd podczas zapisywania do Firestore: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Wystąpił błąd podczas zapisywania danych.')),
-      );
-    }
-  }
-
-  Future<Uint8List> _generatePdf() async {
+  Future<void> _generatePdfForWeb() async {
     final pdf = pw.Document();
-    final fontData = await rootBundle.load("assets/gadzety/Fonts/arial.ttf");
+
+    final fontData = await rootBundle.load('assets/gadzety/Fonts/arial.ttf');
     final ttf = pw.Font.ttf(fontData);
 
     pdf.addPage(
@@ -286,122 +300,181 @@ class _SummaryPageState extends State<SummaryPage> {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                "Podsumowanie sprzedaży - $formattedDate",
+                "Podsumowanie Transakcji",
                 style: pw.TextStyle(
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: pw.FontWeight.bold,
                   font: ttf,
                 ),
               ),
-              pw.SizedBox(height: 10),
               pw.Text(
-                "Całkowita suma sprzedaży: ${GlobalState.sumaSprzedazy.toStringAsFixed(2)} zł",
-                style: pw.TextStyle(fontSize: 18, font: ttf),
-              ),
-              pw.Text(
-                "Łączna wartość rabatów: ${GlobalState.sumaRabaty.toStringAsFixed(2)} zł",
+                "Data i godzina: $currentTime",
                 style: pw.TextStyle(
                   fontSize: 16,
-                  font: ttf,
-                  color: PdfColors.red,
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Divider(thickness: 1, color: PdfColors.grey),
-              pw.Text(
-                "Sprzedane Gadżety:",
-                style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
+                  fontWeight: pw.FontWeight.normal,
                   font: ttf,
                 ),
               ),
-              pw.SizedBox(height: 8),
-              if (GlobalState.sprzedaneGadzety.isNotEmpty)
-                pw.Table(
-                  border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
-                  children: [
-                    // Nagłówki tabeli
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.grey300),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text("Nazwa Gadżetu",
-                              style: pw.TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: pw.FontWeight.bold,
-                                  font: ttf)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text("Ilość",
-                              style: pw.TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: pw.FontWeight.bold,
-                                  font: ttf)),
-                        ),
-                      ],
-                    ),
-                    // Dane z GlobalState
-                    ...GlobalState.sprzedaneGadzety.entries.map(
-                      (entry) => pw.TableRow(
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(8),
-                            child: pw.Text(entry.key,
-                                style: pw.TextStyle(fontSize: 14, font: ttf)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(8),
-                            child: pw.Text("${entry.value} szt.",
-                                style: pw.TextStyle(fontSize: 14, font: ttf)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                )
-              else
-                pw.Text(
-                  "Brak sprzedanych gadżetów.",
-                  style: pw.TextStyle(
-                      fontSize: 14, fontStyle: pw.FontStyle.italic, font: ttf),
-                ),
+              pw.SizedBox(height: 20),
+              _buildPdfTransactionSection(
+                title: "Transakcje za Gotówkę",
+                transactions: GlobalState.gotowkaTransactions,
+                totalAmount: GlobalState.sumaGotowka,
+                totalDiscount: GlobalState.sumaRabatyGotowka,
+                font: ttf,
+              ),
+              pw.SizedBox(height: 20),
+              _buildPdfTransactionSection(
+                title: "Transakcje za Kartę",
+                transactions: GlobalState.kartaTransactions,
+                totalAmount: GlobalState.sumaKarta,
+                totalDiscount: GlobalState.sumaRabatyKarta,
+                font: ttf,
+              ),
+              pw.SizedBox(height: 20),
+              _buildPdfTransactionSection(
+                title: "Ogólne Transakcje",
+                transactions: _mergeTransactions(),
+                totalAmount: GlobalState.sumaGotowka + GlobalState.sumaKarta,
+                totalDiscount:
+                    GlobalState.sumaRabatyGotowka + GlobalState.sumaRabatyKarta,
+                font: ttf,
+              ),
             ],
           );
         },
       ),
     );
 
-    return pdf.save();
-  }
+    final pdfBytes = await pdf.save();
 
-  void _resetSummaryPage() {
-    setState(() {
-      // Resetowanie wszystkich wartości w GlobalState
-      GlobalState.sumaSprzedazy = 0.0;
-      GlobalState.sumaRabaty = 0.0;
-      GlobalState.sumaGotowka = 0.0;
-      GlobalState.sumaKarta = 0.0;
-      GlobalState.sumaParagon = 0.0;
-      GlobalState.sprzedaneGadzety.clear();
-
-      // Czyszczenie kontrolerów tekstowych
-      sumaGotowkaController.text = "0.00";
-      sumaKartaController.text = "0.00";
-      sumaParagonController.text = "0.00";
-    });
-  }
-
-  void _openPdfInNewTab(Uint8List pdfData) {
-    final now = DateTime.now();
-    final formattedDate = DateFormat('yyyy-MM-dd').format(now);
-    final blob = html.Blob([pdfData], 'application/pdf');
+    final blob = html.Blob([pdfBytes], 'application/pdf');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement anchor = html.AnchorElement(href: url)
-      ..setAttribute("download", "Sprzedaz_$formattedDate.pdf")
+    final anchor = html.AnchorElement(href: url)
+      ..target = 'blank'
+      ..download = 'transactions_summary.pdf'
       ..click();
     html.Url.revokeObjectUrl(url);
+  }
+
+  pw.Widget _buildPdfTransactionSection({
+    required String title,
+    required List<Map<String, dynamic>> transactions,
+    required double totalAmount,
+    required double totalDiscount,
+    required pw.Font font,
+  }) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          title,
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            font: font,
+          ),
+        ),
+        pw.SizedBox(height: 10),
+        if (transactions.isEmpty)
+          pw.Text(
+            "Brak transakcji.",
+            style:
+                pw.TextStyle(fontSize: 14, color: PdfColors.grey, font: font),
+          )
+        else
+          pw.Table(
+            border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: PdfColors.grey300),
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text("Gadżet",
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            font: font)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text("Ilość",
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            font: font)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text("Kwota",
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            font: font)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text("Rabat",
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            font: font)),
+                  ),
+                ],
+              ),
+              ...transactions.map(
+                (transaction) => pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(transaction['gadzet'] ?? '',
+                          style: pw.TextStyle(fontSize: 12, font: font)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(transaction['ilosc'].toString(),
+                          style: pw.TextStyle(fontSize: 12, font: font)),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        "${transaction['kwota'].toStringAsFixed(2)} zł",
+                        style: pw.TextStyle(fontSize: 12, font: font),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        "-${transaction['rabat'].toStringAsFixed(2)} zł",
+                        style: pw.TextStyle(
+                            fontSize: 12, color: PdfColors.red, font: font),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        pw.SizedBox(height: 10),
+        pw.Text(
+          "Łączna Kwota: ${totalAmount.toStringAsFixed(2)} zł",
+          style: pw.TextStyle(
+            fontSize: 14,
+            fontWeight: pw.FontWeight.bold,
+            font: font,
+          ),
+        ),
+        pw.Text(
+          "Łączne Rabaty: -${totalDiscount.toStringAsFixed(2)} zł",
+          style: pw.TextStyle(
+            fontSize: 14,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.red,
+            font: font,
+          ),
+        ),
+      ],
+    );
   }
 }

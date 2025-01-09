@@ -10,30 +10,85 @@ class _DatabasePageState extends State<DatabasePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _selectedItem; // Wybrany przedmiot
   int? _currentQuantity; // Ilość wybranego przedmiotu
-  final TextEditingController _quantityController = TextEditingController();
+  double? _currentPrice; // Cena wybranego przedmiotu
+  double? _currentDiscount; // Rabat wybranego przedmiotu
 
-  void _updateQuantity(int newQuantity) async {
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _discountController = TextEditingController();
+
+  /// Aktualizuje ilość w magazynie
+  Future<void> _updateQuantity(int newQuantity) async {
     if (_selectedItem == null) return;
 
-    await _firestore.collection('gadzety').doc(_selectedItem).update({
-      'Ilość': newQuantity,
-    });
+    try {
+      await _firestore.collection('gadzety').doc(_selectedItem).update({
+        'Ilość': newQuantity,
+      });
 
-    setState(() {
-      _currentQuantity = newQuantity;
-      _quantityController.text = newQuantity.toString();
-    });
+      setState(() {
+        _currentQuantity = newQuantity;
+        _quantityController.text = newQuantity.toString();
+      });
 
+      _showSnackbar("Zaktualizowano ilość dla $_selectedItem");
+    } catch (e) {
+      _showSnackbar("Błąd aktualizacji ilości: $e", isError: true);
+    }
+  }
+
+  /// Aktualizuje cenę gadżetu
+  Future<void> _updatePrice(double newPrice) async {
+    if (_selectedItem == null) return;
+
+    try {
+      await _firestore.collection('gadzety').doc(_selectedItem).update({
+        'Cena': newPrice,
+      });
+
+      setState(() {
+        _currentPrice = newPrice;
+        _priceController.text = newPrice.toStringAsFixed(2);
+      });
+
+      _showSnackbar("Zaktualizowano cenę dla $_selectedItem");
+    } catch (e) {
+      _showSnackbar("Błąd aktualizacji ceny: $e", isError: true);
+    }
+  }
+
+  /// Aktualizuje rabat gadżetu
+  Future<void> _updateDiscount(double newDiscount) async {
+    if (_selectedItem == null) return;
+
+    try {
+      await _firestore.collection('gadzety').doc(_selectedItem).update({
+        'Rabat': newDiscount,
+      });
+
+      setState(() {
+        _currentDiscount = newDiscount;
+        _discountController.text = newDiscount.toStringAsFixed(2);
+      });
+
+      _showSnackbar("Zaktualizowano rabat dla $_selectedItem");
+    } catch (e) {
+      _showSnackbar("Błąd aktualizacji rabatu: $e", isError: true);
+    }
+  }
+
+  /// Pokazuje komunikat Snackbar
+  void _showSnackbar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Zaktualizowano ilość dla $_selectedItem"),
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   String getImagePath(String itemName) {
-    // Generujemy ścieżkę do pliku na podstawie nazwy
     return 'assets/gadzety/$itemName.png';
   }
 
@@ -78,15 +133,22 @@ class _DatabasePageState extends State<DatabasePage> {
                         setState(() {
                           _selectedItem = item.id;
                           _currentQuantity = itemData['Ilość'];
+                          _currentPrice = (itemData['Cena'] as num).toDouble();
+                          _currentDiscount =
+                              (itemData['Rabat'] as num?)?.toDouble() ?? 0.0;
                           _quantityController.text =
                               _currentQuantity.toString();
+                          _priceController.text =
+                              _currentPrice!.toStringAsFixed(2);
+                          _discountController.text =
+                              _currentDiscount!.toStringAsFixed(2);
                         });
                       },
                       child: Column(
                         children: [
                           Container(
-                            width: 96, // Zwiększono o 20%
-                            height: 96, // Zwiększono o 20%
+                            width: 96,
+                            height: 96,
                             decoration: BoxDecoration(
                               color: Colors.grey[300],
                               borderRadius: BorderRadius.circular(8),
@@ -123,7 +185,7 @@ class _DatabasePageState extends State<DatabasePage> {
                 ),
               ),
               SizedBox(height: 16),
-              if (_selectedItem != null && _currentQuantity != null)
+              if (_selectedItem != null)
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -152,112 +214,38 @@ class _DatabasePageState extends State<DatabasePage> {
                             ),
                           ),
                           SizedBox(height: 10),
-                          Container(
-                            width: 250, // Zwiększono o 70%
-                            height: 250, // Zwiększono o 70%
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                _selectedItem != null
-                                    ? getImagePath((gadzety
-                                            .firstWhere((doc) =>
-                                                doc.id == _selectedItem)
-                                            .data()
-                                        as Map<String, dynamic>)['Nazwa'])
-                                    : "assets/placeholder.png",
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.image_not_supported,
-                                    size: 40,
-                                    color: Colors.grey,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            "Aktualna ilość: $_currentQuantity",
-                            style: TextStyle(
-                                fontSize: 18, color: Colors.grey[700]),
-                          ),
-                          SizedBox(height: 10),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (_currentQuantity! > 0) {
-                                    _updateQuantity(_currentQuantity! - 1);
+                              _buildEditableField(
+                                label: "Ilość",
+                                controller: _quantityController,
+                                onUpdate: (value) {
+                                  final newQuantity = int.tryParse(value);
+                                  if (newQuantity != null && newQuantity >= 0) {
+                                    _updateQuantity(newQuantity);
                                   }
                                 },
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 14, horizontal: 24),
-                                  backgroundColor: Colors.redAccent,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  "-1",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                               ),
-                              SizedBox(width: 20),
-                              Container(
-                                width: 80,
-                                child: TextField(
-                                  controller: _quantityController,
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 18),
-                                  decoration: InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                        vertical: 10, horizontal: 8),
-                                  ),
-                                  onSubmitted: (value) {
-                                    final newQuantity = int.tryParse(value);
-                                    if (newQuantity != null &&
-                                        newQuantity >= 0) {
-                                      _updateQuantity(newQuantity);
-                                    } else {
-                                      _quantityController.text =
-                                          _currentQuantity.toString();
-                                    }
-                                  },
-                                ),
-                              ),
-                              SizedBox(width: 20),
-                              ElevatedButton(
-                                onPressed: () {
-                                  _updateQuantity(_currentQuantity! + 1);
+                              _buildEditableField(
+                                label: "Cena (zł)",
+                                controller: _priceController,
+                                onUpdate: (value) {
+                                  final newPrice = double.tryParse(value);
+                                  if (newPrice != null && newPrice >= 0) {
+                                    _updatePrice(newPrice);
+                                  }
                                 },
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 14, horizontal: 24),
-                                  backgroundColor: Colors.green,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: Text(
-                                  "+1",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              ),
+                              _buildEditableField(
+                                label: "Rabat (zł)",
+                                controller: _discountController,
+                                onUpdate: (value) {
+                                  final newDiscount = double.tryParse(value);
+                                  if (newDiscount != null && newDiscount >= 0) {
+                                    _updateDiscount(newDiscount);
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -270,6 +258,33 @@ class _DatabasePageState extends State<DatabasePage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildEditableField({
+    required String label,
+    required TextEditingController controller,
+    required Function(String) onUpdate,
+  }) {
+    return Column(
+      children: [
+        Text(label),
+        SizedBox(height: 10),
+        Container(
+          width: 100,
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16),
+            decoration: InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            ),
+            onSubmitted: onUpdate,
+          ),
+        ),
+      ],
     );
   }
 }

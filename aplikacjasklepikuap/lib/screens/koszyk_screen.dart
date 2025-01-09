@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/gadzet.dart';
+import 'payment_screen.dart';
 import 'package:aplikacjasklepikuap/utils/global_state.dart';
 
 class KoszykWidget extends StatelessWidget {
@@ -20,17 +21,18 @@ class KoszykWidget extends StatelessWidget {
             iloscDoZakupu[gadzet.nazwa] != null &&
             iloscDoZakupu[gadzet.nazwa]! > 0)
         .map((gadzet) {
-      double cena = gadzet.cena ?? 0.0;
+      double cena = gadzet.cena;
       int ilosc = iloscDoZakupu[gadzet.nazwa] ?? 0;
 
-      // Oblicz rabat
+      // Sprawdź, czy rabat jest użyty
       bool rabat = rabatUzyty[gadzet.nazwa] ?? false;
-      double rabatKwota = rabat
-          ? (cena * 0.1 >= 1 ? (cena * 0.1).floorToDouble() : cena * 0.1)
-          : 0.0;
+
+      // Rabat naliczany tylko na pierwszą sztukę
+      double rabatKwota = rabat && ilosc > 0 ? gadzet.rabat : 0.0;
+      double cenaPoRabacie = rabat ? (cena - rabatKwota) : cena;
 
       // Cena całkowita
-      double cenaCalkowita = (ilosc * cena) - rabatKwota;
+      double cenaCalkowita = cenaPoRabacie + (ilosc - 1) * cena;
 
       return {
         "nazwa": gadzet.nazwa,
@@ -38,11 +40,11 @@ class KoszykWidget extends StatelessWidget {
         "cena": cena,
         "rabat": rabat,
         "rabatKwota": rabatKwota,
-        "cenaCalkowita": cenaCalkowita.toInt(),
+        "cenaCalkowita": cenaCalkowita,
       };
     }).toList();
 
-    double suma = koszyk.fold(0, (sum, item) => sum + item["cenaCalkowita"]);
+    double suma = koszyk.fold(0.0, (sum, item) => sum + item["cenaCalkowita"]);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -96,11 +98,23 @@ class KoszykWidget extends StatelessWidget {
                                   ),
                                 ),
                                 Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    "${item["cenaCalkowita"].toStringAsFixed(2)} zł",
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(fontSize: 16),
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        "${item["cenaCalkowita"].toStringAsFixed(2)} zł",
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                                      if (item["rabatKwota"] > 0)
+                                        Text(
+                                          "-${item["rabatKwota"].toStringAsFixed(2)} zł (Rabat na 1 sztukę)",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.green[700],
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -149,40 +163,32 @@ class KoszykWidget extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    double sumaTransakcji = 0.0;
-                    double sumaRabatyTransakcji = 0.0;
+                  onPressed: koszyk.isEmpty
+                      ? null
+                      : () {
+                          List<Gadzet> koszykGadzety = [];
+                          iloscDoZakupu.forEach((nazwa, ilosc) {
+                            if (ilosc > 0) {
+                              final gadzet =
+                                  gadzety.firstWhere((g) => g.nazwa == nazwa);
+                              for (int i = 0; i < ilosc; i++) {
+                                koszykGadzety.add(gadzet);
+                              }
+                            }
+                          });
 
-                    koszyk.forEach((item) {
-                      String nazwa = item['nazwa'];
-                      int ilosc = item['ilosc'];
-                      double cena = item['cena'];
-                      double rabatKwota = item['rabatKwota'];
-
-                      // Aktualizacja sprzedanych gadżetów
-                      if (GlobalState.sprzedaneGadzety.containsKey(nazwa)) {
-                        GlobalState.sprzedaneGadzety[nazwa] =
-                            GlobalState.sprzedaneGadzety[nazwa]! + ilosc;
-                      } else {
-                        GlobalState.sprzedaneGadzety[nazwa] = ilosc;
-                      }
-
-                      // Dodanie do sumy transakcji
-                      sumaTransakcji += (ilosc * cena) - rabatKwota;
-                      sumaRabatyTransakcji += rabatKwota;
-                    });
-
-                    // Aktualizacja globalnych wartości
-                    GlobalState.sumaSprzedazy =
-                        sumaTransakcji; // Precyzyjna suma
-                    GlobalState.sumaRabaty = sumaRabatyTransakcji;
-
-                    // Czyszczenie koszyka
-                    iloscDoZakupu.clear();
-
-                    // Zamknięcie dialogu
-                    Navigator.pop(context);
-                  },
+                          Navigator.pop(context); // Zamknięcie koszyka
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PaymentScreen(
+                                koszyk: koszykGadzety,
+                                rabatUzyty:
+                                    rabatUzyty, // Przekazanie mapy rabatUzyty
+                              ),
+                            ),
+                          );
+                        },
                   child: Text("Do płatności"),
                 ),
               ],

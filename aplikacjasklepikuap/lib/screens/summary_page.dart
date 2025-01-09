@@ -64,7 +64,7 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
                 children: [
                   _buildTransactionGroup(
                     title: "Transakcje za Gotówkę",
-                    transactions: GlobalState.gotowkaTransactions,
+                    transactions: _groupTransactions(GlobalState.gotowkaTransactions),
                     totalAmount: GlobalState.sumaGotowka,
                     totalDiscount: GlobalState.sumaRabatyGotowka,
                     color: Colors.green[100]!,
@@ -73,7 +73,7 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
                   SizedBox(height: 16),
                   _buildTransactionGroup(
                     title: "Transakcje za Kartę",
-                    transactions: GlobalState.kartaTransactions,
+                    transactions: _groupTransactions(GlobalState.kartaTransactions),
                     totalAmount: GlobalState.sumaKarta,
                     totalDiscount: GlobalState.sumaRabatyKarta,
                     color: Colors.blue[100]!,
@@ -82,9 +82,8 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
                   SizedBox(height: 16),
                   _buildTransactionGroup(
                     title: "Ogólne Transakcje",
-                    transactions: _mergeTransactions(),
-                    totalAmount:
-                        GlobalState.sumaGotowka + GlobalState.sumaKarta,
+                    transactions: _groupTransactions(_mergeTransactions(), includePaymentMethod: true),
+                    totalAmount: GlobalState.sumaGotowka + GlobalState.sumaKarta,
                     totalDiscount: GlobalState.sumaRabatyGotowka +
                         GlobalState.sumaRabatyKarta,
                     color: Colors.red[100]!,
@@ -115,6 +114,29 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
         };
       }),
     ];
+  }
+
+  /// Groups transactions by `gadzet` and `metodaPlatnosci` (if included).
+  List<Map<String, dynamic>> _groupTransactions(
+      List<Map<String, dynamic>> transactions,
+      {bool includePaymentMethod = false}) {
+    final Map<String, Map<String, dynamic>> grouped = {};
+
+    for (var transaction in transactions) {
+      final key = includePaymentMethod
+          ? "${transaction['gadzet']}_${transaction['metodaPlatnosci']}"
+          : transaction['gadzet'];
+
+      if (grouped.containsKey(key)) {
+        grouped[key]!['ilosc'] += transaction['ilosc'];
+        grouped[key]!['kwota'] += transaction['kwota'];
+        grouped[key]!['rabat'] += transaction['rabat'];
+      } else {
+        grouped[key] = Map<String, dynamic>.from(transaction);
+      }
+    }
+
+    return grouped.values.toList();
   }
 
   Widget _buildTransactionGroup({
@@ -224,14 +246,6 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "Transakcja #$index",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
-          ),
           SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -287,194 +301,214 @@ class _TransactionsSummaryScreenState extends State<TransactionsSummaryScreen> {
   }
 
   Future<void> _generatePdfForWeb() async {
-    final pdf = pw.Document();
+  final pdf = pw.Document();
 
-    final fontData = await rootBundle.load('assets/gadzety/Fonts/arial.ttf');
-    final ttf = pw.Font.ttf(fontData);
+  final fontData = await rootBundle.load('assets/gadzety/Fonts/arial.ttf');
+  final ttf = pw.Font.ttf(fontData);
 
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                "Podsumowanie Transakcji",
-                style: pw.TextStyle(
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                  font: ttf,
-                ),
-              ),
-              pw.Text(
-                "Data i godzina: $currentTime",
-                style: pw.TextStyle(
-                  fontSize: 16,
-                  fontWeight: pw.FontWeight.normal,
-                  font: ttf,
-                ),
-              ),
-              pw.SizedBox(height: 20),
-              _buildPdfTransactionSection(
-                title: "Transakcje za Gotówkę",
-                transactions: GlobalState.gotowkaTransactions,
-                totalAmount: GlobalState.sumaGotowka,
-                totalDiscount: GlobalState.sumaRabatyGotowka,
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context context) {
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              "Podsumowanie Transakcji",
+              style: pw.TextStyle(
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
                 font: ttf,
               ),
-              pw.SizedBox(height: 20),
-              _buildPdfTransactionSection(
-                title: "Transakcje za Kartę",
-                transactions: GlobalState.kartaTransactions,
-                totalAmount: GlobalState.sumaKarta,
-                totalDiscount: GlobalState.sumaRabatyKarta,
+            ),
+            pw.Text(
+              "Data i godzina: $currentTime",
+              style: pw.TextStyle(
+                fontSize: 16,
+                fontWeight: pw.FontWeight.normal,
                 font: ttf,
               ),
-              pw.SizedBox(height: 20),
-              _buildPdfTransactionSection(
-                title: "Ogólne Transakcje",
-                transactions: _mergeTransactions(),
-                totalAmount: GlobalState.sumaGotowka + GlobalState.sumaKarta,
-                totalDiscount:
-                    GlobalState.sumaRabatyGotowka + GlobalState.sumaRabatyKarta,
-                font: ttf,
-              ),
-            ],
-          );
-        },
-      ),
-    );
+            ),
+            pw.SizedBox(height: 20),
+            _buildPdfTransactionSection(
+              title: "Transakcje za Gotówkę",
+              transactions: _groupTransactions(GlobalState.gotowkaTransactions),
+              totalAmount: GlobalState.sumaGotowka,
+              totalDiscount: GlobalState.sumaRabatyGotowka,
+              font: ttf,
+            ),
+            pw.SizedBox(height: 20),
+            _buildPdfTransactionSection(
+              title: "Transakcje za Kartę",
+              transactions: _groupTransactions(GlobalState.kartaTransactions),
+              totalAmount: GlobalState.sumaKarta,
+              totalDiscount: GlobalState.sumaRabatyKarta,
+              font: ttf,
+            ),
+            pw.SizedBox(height: 20),
+            _buildPdfTransactionSection(
+              title: "Ogólne Transakcje",
+              transactions:
+                  _groupTransactions(_mergeTransactions(), includePaymentMethod: true),
+              totalAmount: GlobalState.sumaGotowka + GlobalState.sumaKarta,
+              totalDiscount:
+                  GlobalState.sumaRabatyGotowka + GlobalState.sumaRabatyKarta,
+              font: ttf,
+              includePaymentMethod: true, // Dodano flagę
+            ),
+          ],
+        );
+      },
+    ),
+  );
 
-    final pdfBytes = await pdf.save();
+  final pdfBytes = await pdf.save();
 
-    final blob = html.Blob([pdfBytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..target = 'blank'
-      ..download = 'transactions_summary.pdf'
-      ..click();
-    html.Url.revokeObjectUrl(url);
-  }
+  final blob = html.Blob([pdfBytes], 'application/pdf');
+  final url = html.Url.createObjectUrlFromBlob(blob);
+  final anchor = html.AnchorElement(href: url)
+    ..target = 'blank'
+    ..download = 'transactions_summary.pdf'
+    ..click();
+  html.Url.revokeObjectUrl(url);
+}
 
-  pw.Widget _buildPdfTransactionSection({
-    required String title,
-    required List<Map<String, dynamic>> transactions,
-    required double totalAmount,
-    required double totalDiscount,
-    required pw.Font font,
-  }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          title,
-          style: pw.TextStyle(
-            fontSize: 18,
-            fontWeight: pw.FontWeight.bold,
-            font: font,
-          ),
+pw.Widget _buildPdfTransactionSection({
+  required String title,
+  required List<Map<String, dynamic>> transactions,
+  required double totalAmount,
+  required double totalDiscount,
+  required pw.Font font,
+  bool includePaymentMethod = false, // Flaga do dodania kolumny
+}) {
+  return pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Text(
+        title,
+        style: pw.TextStyle(
+          fontSize: 18,
+          fontWeight: pw.FontWeight.bold,
+          font: font,
         ),
-        pw.SizedBox(height: 10),
-        if (transactions.isEmpty)
-          pw.Text(
-            "Brak transakcji.",
-            style:
-                pw.TextStyle(fontSize: 14, color: PdfColors.grey, font: font),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
-            children: [
-              pw.TableRow(
-                decoration: pw.BoxDecoration(color: PdfColors.grey300),
+      ),
+      pw.SizedBox(height: 10),
+      if (transactions.isEmpty)
+        pw.Text(
+          "Brak transakcji.",
+          style: pw.TextStyle(fontSize: 14, color: PdfColors.grey, font: font),
+        )
+      else
+        pw.Table(
+          border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey),
+          children: [
+            // Nagłówki tabeli
+            pw.TableRow(
+              decoration: pw.BoxDecoration(color: PdfColors.grey300),
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(8),
+                  child: pw.Text("Gadżet",
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          font: font)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(8),
+                  child: pw.Text("Ilość",
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          font: font)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(8),
+                  child: pw.Text("Kwota",
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          font: font)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(8),
+                  child: pw.Text("Rabat",
+                      style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                          font: font)),
+                ),
+                if (includePaymentMethod) // Dodano kolumnę "Sposób Płatności"
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.all(8),
+                    child: pw.Text("Sposób Płatności",
+                        style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                            font: font)),
+                  ),
+              ],
+            ),
+            // Dane transakcji
+            ...transactions.map(
+              (transaction) => pw.TableRow(
                 children: [
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(8),
-                    child: pw.Text("Gadżet",
-                        style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            font: font)),
+                    child: pw.Text(transaction['gadzet'] ?? '',
+                        style: pw.TextStyle(fontSize: 12, font: font)),
                   ),
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(8),
-                    child: pw.Text("Ilość",
-                        style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            font: font)),
+                    child: pw.Text(transaction['ilosc'].toString(),
+                        style: pw.TextStyle(fontSize: 12, font: font)),
                   ),
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(8),
-                    child: pw.Text("Kwota",
-                        style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            font: font)),
+                    child: pw.Text(
+                      "${transaction['kwota'].toStringAsFixed(2)} zł",
+                      style: pw.TextStyle(fontSize: 12, font: font),
+                    ),
                   ),
                   pw.Padding(
                     padding: const pw.EdgeInsets.all(8),
-                    child: pw.Text("Rabat",
-                        style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                            font: font)),
+                    child: pw.Text(
+                      "-${transaction['rabat'].toStringAsFixed(2)} zł",
+                      style: pw.TextStyle(
+                          fontSize: 12, color: PdfColors.red, font: font),
+                    ),
                   ),
+                  if (includePaymentMethod) // Dodano wartość "Sposób Płatności"
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(transaction['metodaPlatnosci'] ?? '',
+                          style: pw.TextStyle(fontSize: 12, font: font)),
+                    ),
                 ],
               ),
-              ...transactions.map(
-                (transaction) => pw.TableRow(
-                  children: [
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(transaction['gadzet'] ?? '',
-                          style: pw.TextStyle(fontSize: 12, font: font)),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(transaction['ilosc'].toString(),
-                          style: pw.TextStyle(fontSize: 12, font: font)),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        "${transaction['kwota'].toStringAsFixed(2)} zł",
-                        style: pw.TextStyle(fontSize: 12, font: font),
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(8),
-                      child: pw.Text(
-                        "-${transaction['rabat'].toStringAsFixed(2)} zł",
-                        style: pw.TextStyle(
-                            fontSize: 12, color: PdfColors.red, font: font),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        pw.SizedBox(height: 10),
-        pw.Text(
-          "Łączna Kwota: ${totalAmount.toStringAsFixed(2)} zł",
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-            font: font,
-          ),
+            ),
+          ],
         ),
-        pw.Text(
-          "Łączne Rabaty: -${totalDiscount.toStringAsFixed(2)} zł",
-          style: pw.TextStyle(
-            fontSize: 14,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.red,
-            font: font,
-          ),
+      pw.SizedBox(height: 10),
+      pw.Text(
+        "Łączna Kwota: ${totalAmount.toStringAsFixed(2)} zł",
+        style: pw.TextStyle(
+          fontSize: 14,
+          fontWeight: pw.FontWeight.bold,
+          font: font,
         ),
-      ],
-    );
-  }
+      ),
+      pw.Text(
+        "Łączne Rabaty: -${totalDiscount.toStringAsFixed(2)} zł",
+        style: pw.TextStyle(
+          fontSize: 14,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfColors.red,
+          font: font,
+        ),
+      ),
+    ],
+  );
+}
+
 }

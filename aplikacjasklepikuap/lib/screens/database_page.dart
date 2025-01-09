@@ -97,7 +97,7 @@ class _DatabasePageState extends State<DatabasePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Baza danych gadżetów"),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: const Color.fromARGB(255, 163, 84, 0),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore.collection('gadzety').snapshots(),
@@ -120,70 +120,72 @@ class _DatabasePageState extends State<DatabasePage> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: gadzety.map((item) {
-                    final itemData = item.data() as Map<String, dynamic>;
-                    final itemName = itemData['Nazwa'];
-                    final itemImagePath = getImagePath(itemName);
+  padding: const EdgeInsets.symmetric(vertical: 16.0),
+  child: Wrap(
+    spacing: 16, // Odstęp między elementami w poziomie
+    runSpacing: 16, // Odstęp między wierszami
+    alignment: WrapAlignment.center, // Wyśrodkowanie elementów
+    children: gadzety.map((item) {
+      final itemData = item.data() as Map<String, dynamic>;
+      final itemName = itemData['Nazwa'];
+      final itemImagePath = getImagePath(itemName);
 
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedItem = item.id;
-                          _currentQuantity = itemData['Ilość'];
-                          _currentPrice = (itemData['Cena'] as num).toDouble();
-                          _currentDiscount =
-                              (itemData['Rabat'] as num?)?.toDouble() ?? 0.0;
-                          _quantityController.text =
-                              _currentQuantity.toString();
-                          _priceController.text =
-                              _currentPrice!.toStringAsFixed(2);
-                          _discountController.text =
-                              _currentDiscount!.toStringAsFixed(2);
-                        });
-                      },
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 96,
-                            height: 96,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                itemImagePath,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.image_not_supported,
-                                    size: 40,
-                                    color: Colors.grey,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            itemName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedItem = item.id;
+            _currentQuantity = itemData['Ilość'];
+            _currentPrice = (itemData['Cena'] as num).toDouble();
+            _currentDiscount =
+                (itemData['Rabat'] as num?)?.toDouble() ?? 0.0;
+            _quantityController.text = _currentQuantity.toString();
+            _priceController.text = _currentPrice!.toStringAsFixed(2);
+            _discountController.text = _currentDiscount!.toStringAsFixed(2);
+          });
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 75, // Zmniejszono szerokość kontenera
+              height: 75, // Zmniejszono wysokość kontenera
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  itemImagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.image_not_supported,
+                      size: 40,
+                      color: Colors.grey,
                     );
-                  }).toList(),
+                  },
                 ),
               ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              itemName,
+              style: TextStyle(
+                fontSize: 10, // Zmniejszono rozmiar tekstu
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }).toList(),
+  ),
+),
+
+
               SizedBox(height: 16),
               if (_selectedItem != null)
                 Expanded(

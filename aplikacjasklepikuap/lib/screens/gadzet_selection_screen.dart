@@ -91,7 +91,7 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Wybierz gadżety"),
-        backgroundColor: const Color.fromARGB(255, 180, 179, 179),
+        backgroundColor: const Color.fromARGB(255, 163, 84, 0),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -147,155 +147,158 @@ class _GadzetSelectionScreenState extends State<GadzetSelectionScreen> {
                   ),
                 )
               : Padding(
-                  padding:
-                      const EdgeInsets.only(bottom: 80.0), // Odstęp na koszyk
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 10.0,
-                      mainAxisSpacing: 0.8,
-                      childAspectRatio: 1,
-                    ),
-                    itemCount: gadzety.length,
-                    itemBuilder: (context, index) {
-                      final gadzet = gadzety[index];
-                      final iloscWMagazynie = iloscZFirebase[gadzet.nazwa] ?? 0;
-                      final iloscZakupu = iloscDoZakupu[gadzet.nazwa] ?? 0;
-                      final cenaCalkowita = _obliczCeneCalkowita(gadzet.nazwa);
+  padding: const EdgeInsets.only(bottom: 80.0), // Odstęp na koszyk
+  child: GridView.builder(
+    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3, // Liczba elementów w jednym rzędzie zmieniona na 3
+      crossAxisSpacing: 10.0, // Odstęp między elementami w poziomie
+      mainAxisSpacing: 0.8, // Odstęp między elementami w pionie
+      childAspectRatio: 1, // Proporcje szerokości do wysokości elementu
+    ),
+    itemCount: gadzety.length,
+    itemBuilder: (context, index) {
+      final gadzet = gadzety[index];
+      final iloscWMagazynie = iloscZFirebase[gadzet.nazwa] ?? 0;
+      final iloscZakupu = iloscDoZakupu[gadzet.nazwa] ?? 0;
+      final cenaCalkowita = _obliczCeneCalkowita(gadzet.nazwa);
 
-                      return Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        color: Colors.deepPurple[50],
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.asset(
-                                    gadzet.obrazek,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset(
-                                        'assets/placeholder.png',
-                                        fit: BoxFit.contain,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                gadzet.nazwa,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.deepPurple[800],
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.black87),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Rabat: ${gadzet.rabat.toStringAsFixed(2)} zł",
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.green[700]),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Ilość w magazynie: $iloscWMagazynie",
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[600]),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Ilość do zakupu: $iloscZakupu",
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[600]),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Cena całkowita: ${cenaCalkowita.toStringAsFixed(2)} zł",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.deepPurple,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      rabatUzyty[gadzet.nazwa]!
-                                          ? Icons.undo
-                                          : Icons.discount,
-                                      color: rabatUzyty[gadzet.nazwa]!
-                                          ? const Color.fromARGB(255, 0, 4, 255)
-                                          : Colors.green[700],
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        rabatUzyty[gadzet.nazwa] =
-                                            !rabatUzyty[gadzet.nazwa]!;
-                                      });
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.add_circle,
-                                        color: Colors.deepPurple),
-                                    onPressed: () {
-                                      if (iloscWMagazynie > 0) {
-                                        setState(() {
-                                          iloscDoZakupu[gadzet.nazwa] =
-                                              iloscZakupu + 1;
-                                          _updateIlosc(gadzet.nazwa,
-                                              iloscWMagazynie - 1);
-                                        });
-                                      }
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.remove_circle,
-                                        color: Colors.redAccent),
-                                    onPressed: () {
-                                      if (iloscZakupu > 0) {
-                                        setState(() {
-                                          iloscDoZakupu[gadzet.nazwa] =
-                                              iloscZakupu - 1;
-                                          _updateIlosc(gadzet.nazwa,
-                                              iloscWMagazynie + 1);
-                                        });
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+      return Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        color: Colors.deepPurple[50],
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    gadzet.obrazek,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/placeholder.png',
+                        fit: BoxFit.contain,
                       );
                     },
                   ),
                 ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                gadzet.nazwa,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple[800],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Cena: ${gadzet.cena.toStringAsFixed(2)} zł",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold, // Dodano pogrubienie
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Rabat: ${gadzet.rabat.toStringAsFixed(2)} zł",
+                style: TextStyle(
+                    fontSize: 10, color: Colors.green[700]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Ilość w magazynie: $iloscWMagazynie",
+                style: TextStyle(
+                    fontSize: 13, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Ilość do zakupu: $iloscZakupu",
+                style: TextStyle(
+                    fontSize: 13, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Cena całkowita: ${cenaCalkowita.toStringAsFixed(2)} zł",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.deepPurple,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      rabatUzyty[gadzet.nazwa]!
+                          ? Icons.undo
+                          : Icons.discount,
+                      color: rabatUzyty[gadzet.nazwa]!
+                          ? const Color.fromARGB(255, 0, 4, 255)
+                          : Colors.green[700],
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        rabatUzyty[gadzet.nazwa] =
+                            !rabatUzyty[gadzet.nazwa]!;
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle,
+                        color: Colors.deepPurple),
+                    onPressed: () {
+                      if (iloscWMagazynie > 0) {
+                        setState(() {
+                          iloscDoZakupu[gadzet.nazwa] =
+                              iloscZakupu + 1;
+                          _updateIlosc(gadzet.nazwa,
+                              iloscWMagazynie - 1);
+                        });
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.remove_circle,
+                        color: Colors.redAccent),
+                    onPressed: () {
+                      if (iloscZakupu > 0) {
+                        setState(() {
+                          iloscDoZakupu[gadzet.nazwa] =
+                              iloscZakupu - 1;
+                          _updateIlosc(gadzet.nazwa,
+                              iloscWMagazynie + 1);
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  ),
+),
+
+                
         ],
       ),
     );

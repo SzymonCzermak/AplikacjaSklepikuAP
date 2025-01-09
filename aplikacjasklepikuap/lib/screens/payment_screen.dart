@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/gadzet.dart';
-import '../utils/global_state.dart';
+import '../utils/global_state.dart'; 
 import 'home_page.dart';
 
 class PaymentScreen extends StatefulWidget {
